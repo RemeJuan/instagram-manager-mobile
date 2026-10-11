@@ -1,0 +1,7 @@
+Kinship helps you understand your Instagram connections using data from your official Instagram export.
+
+Import an export file on your device to view your current follower and following lists. Review connection details without sharing your Instagram password.
+
+Kinship does not log in to Instagram or upload your export. Results reflect information in the export you provide and may not represent changes made since it was created.
+
+Kinship is an independent app and is not affiliated with Instagram or Meta.

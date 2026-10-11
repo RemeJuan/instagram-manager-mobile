@@ -1,0 +1,721 @@
+default_platform :ios
+
+require "deliver"
+require "fileutils"
+require "tmpdir"
+
+# Fail closed until Kinship release identifiers, URLs, metadata, and release setup
+# have been reviewed. Must remain first action in every store/shared lane.
+def kinship_release_gate!
+  UI.user_error!("Kinship release gate is closed. Review fastlane/KINSHIP_RELEASE.md before metadata, credential, screenshot, or release operations.")
+end
+
+################################################################
+# Helper: validate required env vars are set
+################################################################
+def check_ios_creds
+  required = %w[APP_STORE_CONNECT_ISSUER_ID APP_STORE_CONNECT_KEY_IDENTIFIER APP_STORE_CONNECT_PRIVATE_KEY]
+  missing = required.select { |v| ENV[v].nil? || ENV[v].empty? }
+  UI.user_error!("Missing iOS credentials: #{missing.join(', ')}") unless missing.empty?
+  UI.success "iOS credentials: OK"
+end
+
+def check_android_creds
+  UI.user_error!("Missing SUPPLY_JSON_KEY_DATA") if ENV["SUPPLY_JSON_KEY_DATA"].nil? || ENV["SUPPLY_JSON_KEY_DATA"].empty?
+  require "json"
+  data = JSON.parse(ENV["SUPPLY_JSON_KEY_DATA"])
+  UI.success "Android credentials: OK (project: #{data['project_id']})"
+rescue JSON::ParserError => e
+  UI.user_error!("SUPPLY_JSON_KEY_DATA is not valid JSON: #{e.message}")
+end
+
+def screenshots_output_dir
+  File.expand_path("screenshots/output", __dir__)
+end
+
+def screenshot_upload_order
+  order_path = File.expand_path("screenshots/upload_order.txt", __dir__)
+  File.readlines(order_path, chomp: true).map(&:strip).reject(&:empty?)
+end
+
+def ios_screenshots_dir
+  File.join(screenshots_output_dir, "ios")
+end
+
+def stage_ios_screenshots_upload
+  source_dir = ios_screenshots_dir
+  UI.user_error!("Missing iOS screenshots output: #{source_dir}") unless Dir.exist?(source_dir)
+
+  staging_dir = Dir.mktmpdir("ios-screenshots-upload-")
+
+  Dir.children(source_dir).sort.each do |locale|
+    locale_src = File.join(source_dir, locale)
+    next unless File.directory?(locale_src)
+
+    locale_dst = File.join(staging_dir, locale)
+    FileUtils.mkdir_p(locale_dst)
+
+    by_asset = Dir.glob(File.join(locale_src, "*.png")).each_with_object({}) do |path, memo|
+      memo[File.basename(path, ".png")] = path
+    end
+
+    ordered_paths = screenshot_upload_order.filter_map { |asset| by_asset[asset] }
+    remaining_paths = by_asset.values - ordered_paths
+
+    (ordered_paths + remaining_paths.sort).each_with_index do |path, idx|
+      dst_name = format("%02d_%s", idx + 1, File.basename(path))
+      FileUtils.cp(path, File.join(locale_dst, dst_name))
+    end
+  end
+
+  staging_dir
+end
+
+def android_screenshots_dir
+  File.join(screenshots_output_dir, "android")
+end
+
+def stage_android_screenshots_upload
+  source_dir = android_screenshots_dir
+  UI.user_error!("Missing Android screenshots output: #{source_dir}") unless Dir.exist?(source_dir)
+
+  staging_dir = Dir.mktmpdir("android-screenshots-upload-")
+  copy_dir = File.expand_path("screenshots/copy", __dir__)
+  configured_locales = Dir.glob(File.join(copy_dir, "*.{yaml,yml}")).map do |path|
+    File.basename(path).sub(/\.(yaml|yml)$/, "")
+  end
+  locales = Dir.children(source_dir).sort.select do |entry|
+    File.directory?(File.join(source_dir, entry)) && configured_locales.include?(entry)
+  end
+  skipped_locales = Dir.children(source_dir).sort.select do |entry|
+    File.directory?(File.join(source_dir, entry)) && !configured_locales.include?(entry)
+  end
+  screenshot_types = %w[phoneScreenshots sevenInchScreenshots tenInchScreenshots]
+  locale_map = {
+    "it" => "it-IT"
+  }
+
+  skipped_locales.each do |locale|
+    UI.important("Skipping stale Android screenshot locale '#{locale}' (no matching copy YAML)")
+  end
+
+  locales.each do |locale|
+    play_locale = locale_map.fetch(locale, locale)
+    locale_src = File.join(source_dir, locale)
+    locale_dst = File.join(staging_dir, play_locale, "images")
+    FileUtils.mkdir_p(locale_dst)
+
+    by_asset = Dir.glob(File.join(locale_src, "*.png")).each_with_object({}) do |path, memo|
+      memo[File.basename(path, ".png")] = path
+    end
+
+    ordered_paths = screenshot_upload_order.filter_map { |asset| by_asset[asset] }
+    remaining_paths = by_asset.values - ordered_paths
+    ordered_upload_paths = ordered_paths + remaining_paths.sort
+
+    screenshot_types.each do |type|
+      type_dir = File.join(locale_dst, type)
+      FileUtils.mkdir_p(type_dir)
+      ordered_upload_paths.each_with_index do |path, idx|
+        dst_name = format("%02d_%s", idx + 1, File.basename(path))
+        FileUtils.cp(path, File.join(type_dir, dst_name))
+      end
+    end
+  end
+
+  staging_dir
+end
+
+def replace_ios_screenshots(screenshots_path)
+  app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
+  UI.user_error!("Missing iOS app identifier in Appfile") if app_identifier.to_s.empty?
+
+  Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(**api_key)
+
+  app = Spaceship::ConnectAPI::App.find(app_identifier)
+  UI.user_error!("Could not find app with app identifier '#{app_identifier}'") unless app
+
+  version = app.get_edit_app_store_version(platform: Spaceship::ConnectAPI::Platform::IOS)
+  UI.user_error!("Could not find a version to edit for app '#{app.name}'") unless version
+
+  localizations = version.get_app_store_version_localizations
+  screenshots = Deliver::Loader.load_app_screenshots(screenshots_path, true)
+  screenshots_per_language = screenshots.group_by(&:language)
+  iterator = Deliver::AppScreenshotIterator.new(localizations)
+  processed_sets = {}
+
+  iterator.each_local_screenshot(screenshots_per_language) do |localization, app_screenshot_set, screenshot, index|
+    unless processed_sets[app_screenshot_set.id]
+      UI.important("Replacing screenshots for #{localization.locale} #{app_screenshot_set.screenshot_display_type}")
+      (app_screenshot_set.app_screenshots || []).each(&:delete!)
+      processed_sets[app_screenshot_set.id] = true
+    end
+
+    UI.message("Uploading #{File.basename(screenshot.path)} to #{localization.locale} #{app_screenshot_set.screenshot_display_type}")
+    app_screenshot_set.upload_screenshot(path: screenshot.path, wait_for_processing: true, position: index)
+    UI.message("Uploaded #{File.basename(screenshot.path)}")
+  end
+
+  UI.success("Successfully uploaded screenshots to App Store Connect")
+end
+
+platform :ios do
+  ################################################################
+  # Build API key from env vars for deliver
+  ################################################################
+  def api_key
+    app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_KEY_IDENTIFIER"],
+      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+      key_content: ENV["APP_STORE_CONNECT_PRIVATE_KEY"],
+      is_key_content_base64: false
+    )
+  end
+
+  ################################################################
+  # Check iOS credentials without touching App Store Connect
+  ################################################################
+  desc "Verify iOS credentials are valid and present"
+  lane :metadata_check do
+    kinship_release_gate!
+    check_ios_creds
+    api_key
+    UI.success "iOS credentials OK — try ios metadata_pull for a connectivity test"
+  end
+
+  ################################################################
+  # Pull current metadata from App Store Connect via CLI
+  ################################################################
+  desc "Pull iOS metadata from App Store Connect"
+  lane :metadata_pull do
+    kinship_release_gate!
+    check_ios_creds
+    api_key_path = File.expand_path("../.asc_api_key.json", __dir__)
+    api_key_data = {
+      key_id: ENV["APP_STORE_CONNECT_KEY_IDENTIFIER"],
+      issuer_id: ENV["APP_STORE_CONNECT_ISSUER_ID"],
+      key: ENV["APP_STORE_CONNECT_PRIVATE_KEY"],
+      in_house: false
+    }
+    metadata_dir = File.expand_path("metadata/ios", __dir__)
+    File.write(api_key_path, JSON.generate(api_key_data))
+    sh("bundle", "exec", "fastlane", "deliver", "download_metadata",
+       "--force",
+       "--metadata_path", metadata_dir,
+       "--api_key_path", api_key_path)
+    File.delete(api_key_path)
+    UI.success "iOS metadata downloaded"
+  end
+
+  ################################################################
+  # Push local metadata changes to App Store Connect.
+  #
+  # Source locale folders are copied as-is, preserving localized name and
+  # promotional text fields. release_notes.txt is optional for first release.
+  ################################################################
+  desc "DISABLED: iOS metadata push (partial write; retry risks review attachment deletion)"
+  lane :metadata_push do |options|
+    UI.user_error!("iOS metadata_push is disabled: a previous partial write occurred, and retry may delete review attachments after a Fastlane review-attachment crash. Use ios metadata_readback to inspect ASC state.")
+  end
+
+  desc "Read back public iOS metadata from App Store Connect (GET only)"
+  lane :metadata_readback do
+    check_ios_creds
+    key = api_key
+    Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(**key)
+
+    app_id = "com.kinship.instagram.manager"
+    locales = %w[en-GB de-DE es-ES fr-FR it ja pt-BR]
+    metadata_dir = File.expand_path("metadata/ios", __dir__)
+    app = Spaceship::ConnectAPI::App.find(app_id)
+    UI.user_error!("ASC readback requires exactly one app for the configured identifier") unless app
+
+    app_infos = Spaceship::ConnectAPI.get_app_infos(app_id: app.id, includes: "primaryCategory,secondaryCategory").to_models
+    UI.user_error!("ASC readback requires exactly one AppInfo; found #{app_infos.length}") unless app_infos.length == 1
+    app_info = app_infos.first
+    app_info_state = app_info.respond_to?(:state) ? app_info.state.to_s : ""
+    UI.user_error!("ASC URL completion requires an editable AppInfo state") unless app_info_state.empty? || %w[PREPARE_FOR_SUBMISSION METADATA_REJECTED].include?(app_info_state)
+    version = app.get_edit_app_store_version(platform: Spaceship::ConnectAPI::Platform::IOS)
+    UI.user_error!("ASC readback requires exactly one editable iOS version") unless version
+    UI.user_error!("ASC readback expected iOS version 1.0") unless version.version_string.to_s == "1.0"
+
+    mappings = {
+      "appInfo" => {
+        "name" => "name",
+        "subtitle" => "subtitle",
+        "privacy_policy_url" => "privacy_url"
+      },
+      "version" => {
+        "description" => "description",
+        "keywords" => "keywords",
+        "promotional_text" => "promotional_text",
+        "support_url" => "support_url",
+        "marketing_url" => "marketing_url"
+      }
+    }
+    collections = {
+      "appInfo" => app_info.get_app_info_localizations,
+      "version" => version.get_app_store_version_localizations
+    }
+    collections.each do |kind, collection|
+      models = collection.respond_to?(:to_models) ? collection.to_models : collection
+      UI.user_error!("ASC readback received invalid #{kind} localization data") unless models.is_a?(Array)
+      locales.each do |locale|
+        matches = models.select { |item| item.locale.to_s == locale }
+        UI.user_error!("ASC readback requires exactly one #{kind} localization for #{locale}; found #{matches.length}") unless matches.length == 1
+        remote = matches.first
+        mappings.fetch(kind).each do |getter, local_field|
+          UI.user_error!("ASC readback model lacks expected public field") unless remote.respond_to?(getter)
+          local_path = File.join(metadata_dir, locale, "#{local_field}.txt")
+          root_path = File.join(metadata_dir, "#{local_field}.txt")
+          expected_path = if File.file?(local_path)
+            local_path
+          elsif %w[privacy_url support_url marketing_url].include?(local_field) && File.file?(root_path)
+            root_path
+          end
+          expected = expected_path ? File.read(expected_path).strip : nil
+          remote_value = remote.public_send(getter)
+          status = if expected.nil?
+            remote_value.to_s.empty? ? "missing" : "local_missing"
+          elsif remote_value.to_s.empty?
+            "remote_missing"
+          elsif remote_value.to_s == expected
+            "match"
+          else
+            "diff"
+          end
+          source = expected_path == root_path ? " (root expectation; not staged per locale)" : ""
+          UI.message("#{kind} #{locale} #{local_field}: #{status}#{source}")
+        end
+      end
+      unexpected_locales = models.map { |item| item.locale.to_s }.uniq - locales
+      unexpected_locales.each { |locale| UI.message("#{kind} #{locale}: unexpected_locale") }
+    end
+
+    copyright_path = File.join(metadata_dir, "copyright.txt")
+    if File.file?(copyright_path)
+      expected_copyright = File.read(copyright_path).strip
+      status = version.respond_to?(:copyright) && version.copyright.to_s == expected_copyright ? "match" : "diff"
+      UI.message("root copyright: #{status}")
+    else
+      UI.message("root copyright: local expectation absent")
+    end
+    %w[primary_category secondary_category].each do |field|
+      local_path = File.join(metadata_dir, "#{field}.txt")
+      next unless File.file?(local_path)
+
+      category = app_info.public_send(field)
+      remote_id = category.respond_to?(:id) ? category.id.to_s : ""
+      status = if remote_id.empty?
+        "remote_missing_or_unavailable"
+      elsif remote_id == File.read(local_path).strip
+        "match"
+      else
+        "diff"
+      end
+      UI.message("root #{field}: #{status}")
+    end
+  end
+
+  desc "Set only public App Store Connect URL metadata from root files"
+  lane :metadata_complete_urls do
+    check_ios_creds
+    key = api_key
+    Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(**key)
+
+    app_id = "com.kinship.instagram.manager"
+    locales = %w[en-GB de-DE es-ES fr-FR it ja pt-BR]
+    metadata_dir = File.expand_path("metadata/ios", __dir__)
+    url_fields = {
+      "privacy_url" => { kind: "appInfo", getter: :privacy_policy_url, attribute: :privacy_policy_url },
+      "support_url" => { kind: "version", getter: :support_url, attribute: :support_url },
+      "marketing_url" => { kind: "version", getter: :marketing_url, attribute: :marketing_url }
+    }
+    expected_urls = url_fields.each_with_object({}) do |(filename, _definition), values|
+      path = File.join(metadata_dir, "#{filename}.txt")
+      value = File.file?(path) ? File.read(path).strip : ""
+      UI.user_error!("ASC URL completion requires valid non-empty local URL expectations") unless value.match?(/\Ahttps:\/\/[^\s]+\z/i)
+      values[filename] = value
+    end
+
+    app = Spaceship::ConnectAPI::App.find(app_id)
+    UI.user_error!("ASC URL completion requires the exact configured app") unless app && app.bundle_id.to_s == app_id
+    app_infos = Spaceship::ConnectAPI.get_app_infos(app_id: app.id, includes: "primaryCategory,secondaryCategory").to_models
+    UI.user_error!("ASC URL completion requires exactly one AppInfo") unless app_infos.is_a?(Array) && app_infos.length == 1
+    app_info = app_infos.first
+    version = app.get_edit_app_store_version(platform: Spaceship::ConnectAPI::Platform::IOS)
+    UI.user_error!("ASC URL completion requires an editable iOS version 1.0") unless version && version.version_string.to_s == "1.0" && version.platform.to_s.downcase == "ios"
+    editable_states = %w[PREPARE_FOR_SUBMISSION METADATA_REJECTED]
+    UI.user_error!("ASC URL completion requires an editable version state") unless editable_states.include?(version.app_store_state.to_s)
+
+    fetch_localizations = lambda do |kind|
+      collection = kind == "appInfo" ? app_info.get_app_info_localizations : version.get_app_store_version_localizations
+      models = collection.respond_to?(:to_models) ? collection.to_models : collection
+      UI.user_error!("ASC URL completion received invalid localization data") unless models.is_a?(Array)
+      actual_locales = models.map { |item| item.locale.to_s }
+      UI.user_error!("ASC URL completion found ambiguous localization locales") unless actual_locales.sort == locales.sort
+      models
+    end
+    locate = lambda do |models, locale|
+      matches = models.select { |item| item.locale.to_s == locale }
+      UI.user_error!("ASC URL completion requires exactly one localization per expected locale") unless matches.length == 1
+      matches.first
+    end
+
+    app_info_localizations = fetch_localizations.call("appInfo")
+    version_localizations = fetch_localizations.call("version")
+    existing_values = {}
+    locales.each do |locale|
+      {
+        "appInfo" => locate.call(app_info_localizations, locale),
+        "version" => locate.call(version_localizations, locale)
+      }.each do |kind, model|
+        expected_non_url_fields = kind == "appInfo" ? { name: "name", subtitle: "subtitle" } : {
+          description: "description", keywords: "keywords", promotional_text: "promotional_text"
+        }
+        expected_non_url_fields.each do |getter, filename|
+          path = File.join(metadata_dir, locale, "#{filename}.txt")
+          UI.user_error!("ASC URL completion requires local text metadata for every expected locale") unless File.file?(path) && model.respond_to?(getter)
+          expected_text = File.read(path).strip
+          actual_text = model.public_send(getter)
+          UI.user_error!("ASC URL completion local text metadata does not match ASC") unless actual_text.to_s == expected_text
+        end
+      end
+
+      app_info_model = locate.call(app_info_localizations, locale)
+      version_model = locate.call(version_localizations, locale)
+      {
+        "privacy_url" => app_info_model,
+        "support_url" => version_model,
+        "marketing_url" => version_model
+      }.each do |filename, model|
+        definition = url_fields.fetch(filename)
+        UI.user_error!("ASC URL completion model lacks expected URL field") unless model.respond_to?(definition.fetch(:getter))
+        remote_value = model.public_send(definition.fetch(:getter)).to_s
+        expected_value = expected_urls.fetch(filename)
+        UI.user_error!("ASC URL completion found conflicting remote URL metadata") unless remote_value.empty? || remote_value == expected_value
+        existing_values[[locale, filename]] = remote_value
+      end
+    end
+
+    locales.each do |locale|
+      {
+        "privacy_url" => locate.call(app_info_localizations, locale),
+        "support_url" => locate.call(version_localizations, locale),
+        "marketing_url" => locate.call(version_localizations, locale)
+      }.each do |filename, model|
+        next unless existing_values.fetch([locale, filename]).empty?
+
+        definition = url_fields.fetch(filename)
+        begin
+          model.update(attributes: { definition.fetch(:attribute) => expected_urls.fetch(filename) })
+        rescue StandardError
+          UI.user_error!("ASC URL completion write failed for #{locale} #{filename}; no further writes attempted")
+        end
+
+        verified = false
+        3.times do |attempt|
+          begin
+            fresh_model = if definition.fetch(:kind) == "appInfo"
+              refreshed = app_info.get_app_info_localizations
+              refreshed = refreshed.respond_to?(:to_models) ? refreshed.to_models : refreshed
+              refreshed.select { |item| item.id.to_s == model.id.to_s }.one? ? refreshed.find { |item| item.id.to_s == model.id.to_s } : nil
+            else
+              Spaceship::ConnectAPI::AppStoreVersionLocalization.get(app_store_version_localization_id: model.id).first
+            end
+            if fresh_model && fresh_model.respond_to?(definition.fetch(:getter)) &&
+               fresh_model.public_send(definition.fetch(:getter)).to_s == expected_urls.fetch(filename)
+              verified = true
+              break
+            end
+          rescue StandardError
+            # GET-only retry handles transient propagation and hides API payloads.
+          end
+          sleep(1) if attempt < 2
+        end
+        UI.user_error!("ASC URL completion verification failed for #{locale} #{filename}; no further writes attempted") unless verified
+        UI.message("#{locale} #{filename}: verified")
+      end
+    end
+
+    app_info_localizations = fetch_localizations.call("appInfo")
+    version_localizations = fetch_localizations.call("version")
+    locales.each do |locale|
+      {
+        "privacy_url" => locate.call(app_info_localizations, locale),
+        "support_url" => locate.call(version_localizations, locale),
+        "marketing_url" => locate.call(version_localizations, locale)
+      }.each do |filename, model|
+        definition = url_fields.fetch(filename)
+        status = model.respond_to?(definition.fetch(:getter)) && model.public_send(definition.fetch(:getter)).to_s == expected_urls.fetch(filename) ? "match" : "diff"
+        UI.message("#{locale} #{filename}: #{status}")
+        UI.user_error!("ASC URL completion post-write verification failed") unless status == "match"
+      end
+    end
+  end
+
+  ################################################################
+  # Push release notes only to App Store Connect
+  #
+  # Useful for patch releases where description/keywords/subtitle stay
+  # unchanged and only What's New text needs updating.
+  ################################################################
+  desc "Push iOS release notes only to App Store Connect (no binary, no screenshots)"
+  lane :release_notes_push do
+    kinship_release_gate!
+    check_ios_creds
+    ios_push_locales = %w[en-GB de-DE es-ES fr-FR it ja pt-BR]
+    key = api_key
+    metadata_dir = File.expand_path("metadata/ios", __dir__)
+    push_dir = Dir.mktmpdir("kinship-ios-release-notes-")
+
+    begin
+      notes_found = false
+      ios_push_locales.each do |locale|
+        src = File.join(metadata_dir, locale, "release_notes.txt")
+        next unless File.file?(src)
+
+        locale_dir = File.join(push_dir, locale)
+        FileUtils.mkdir_p(locale_dir)
+        FileUtils.cp(src, File.join(locale_dir, "release_notes.txt"))
+        notes_found = true
+      end
+      UI.user_error!("No iOS release_notes.txt files found") unless notes_found
+      deliver(
+        api_key: key,
+        skip_metadata: false,
+        skip_binary_upload: true,
+        skip_screenshots: true,
+        submit_for_review: false,
+        automatic_release: false,
+        phased_release: false,
+        reject_if_possible: false,
+        overwrite_screenshots: false,
+        app_identifier: "com.kinship.instagram",
+        metadata_path: push_dir,
+        run_precheck_before_submit: false
+      )
+    ensure
+      FileUtils.rm_rf(push_dir) if Dir.exist?(push_dir)
+    end
+  end
+
+  ################################################################
+  # Push screenshots only to App Store Connect
+  ################################################################
+  desc "Push screenshots to App Store Connect (no metadata, no binary)"
+  lane :screenshot_push do
+    kinship_release_gate!
+    check_ios_creds
+    screenshots_path = stage_ios_screenshots_upload
+    replace_ios_screenshots(screenshots_path)
+  end
+end
+
+platform :android do
+  ################################################################
+  # Check Android credentials and connectivity
+  ################################################################
+  desc "Verify Android credentials and Google Play connectivity"
+  lane :metadata_check do
+    kinship_release_gate!
+    check_android_creds
+    UI.message "Checking Play Console connectivity (validate_only)..."
+    supply(
+      package_name: "com.threed_print_calculator",
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: false,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: true,
+      metadata_path: "fastlane/metadata/android",
+      validate_only: true
+    )
+    UI.success "Android credentials and connectivity OK"
+  end
+
+  ################################################################
+  # Pull current metadata from Google Play to local files
+  #
+  # NOTE: `supply` does not support download. Use the Google Play
+  # Console web UI to export/store listings manually when needed.
+  # This lane exists as a no-op placeholder for future tooling.
+  # See: https://github.com/fastlane/fastlane/tree/master/supply
+  ################################################################
+  desc "Pull Android metadata from Google Play Console"
+  lane :metadata_pull do
+    kinship_release_gate!
+    check_android_creds
+    UI.important "supply has no download mode — this is a no-op"
+    UI.important "Export listing from Google Play Console web UI manually"
+    UI.important "Manage > App presence > Store listing, then copy content"
+    UI.message "Android pull: no action taken"
+  end
+
+  ################################################################
+  # Push local metadata changes to Google Play
+  ################################################################
+  desc "Push metadata to Google Play Console (no APK)"
+  lane :metadata_push do |options|
+    kinship_release_gate!
+    check_android_creds
+    track = options[:track] || ENV["METADATA_TRACK"] || "open_testing"
+    track = "beta" if %w[open_testing open-testing open testing].include?(track.to_s.downcase.tr(" ", "_"))
+    version_code = options[:version_code] || ENV["VERSION_CODE"]
+
+    if version_code.to_s.strip.empty?
+      version_codes = google_play_track_version_codes(
+        package_name: "com.threed_print_calculator",
+        track: track
+      )
+      version_code = version_codes.compact.max
+    end
+
+    UI.user_error!("version_code is required") if version_code.to_s.strip.empty?
+
+    check_no_untranslated(
+      File.expand_path("metadata/android", __dir__),
+      %w[en-GB de-DE pt-BR es-ES fr-FR it-IT ja-JP],
+      %w[title.txt short_description.txt full_description.txt changelogs/default.txt]
+    )
+    supply(
+      package_name: "com.threed_print_calculator",
+      track: track,
+      version_code: version_code,
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: false,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: false,
+      metadata_path: "fastlane/metadata/android"
+    )
+  end
+
+  ################################################################
+  # Push changelogs only to Google Play
+  #
+  # Useful for patch releases where listing copy stays unchanged and
+  # only What's New text needs updating for an existing version code.
+  ################################################################
+  desc "Push Android changelogs only to Google Play Console (no APK)"
+  lane :changelog_push do |options|
+    kinship_release_gate!
+    check_android_creds
+    track = options[:track] || ENV["METADATA_TRACK"] || "open_testing"
+    track = "beta" if %w[open_testing open-testing open testing].include?(track.to_s.downcase.tr(" ", "_"))
+    version_code = options[:version_code] || ENV["VERSION_CODE"]
+
+    if version_code.to_s.strip.empty?
+      version_codes = google_play_track_version_codes(
+        package_name: "com.threed_print_calculator",
+        track: track
+      )
+      version_code = version_codes.compact.max
+    end
+
+    UI.user_error!("version_code is required") if version_code.to_s.strip.empty?
+
+    check_no_untranslated(
+      File.expand_path("metadata/android", __dir__),
+      %w[en-GB de-DE pt-BR es-ES fr-FR it-IT ja-JP],
+      %w[changelogs/default.txt]
+    )
+
+    supply(
+      package_name: "com.threed_print_calculator",
+      track: track,
+      version_code: version_code,
+      skip_upload_apk: true,
+      skip_upload_aab: true,
+      skip_upload_metadata: true,
+      skip_upload_images: true,
+      skip_upload_screenshots: true,
+      skip_upload_changelogs: false,
+      metadata_path: "fastlane/metadata/android"
+    )
+  end
+
+  ################################################################
+  # Push screenshots only to Google Play
+  ################################################################
+  desc "Push screenshots to Google Play Console (no metadata, no APK)"
+  lane :screenshot_push do
+    kinship_release_gate!
+    check_android_creds
+    staging_dir = stage_android_screenshots_upload
+
+    begin
+      supply(
+        package_name: "com.threed_print_calculator",
+        skip_upload_apk: true,
+        skip_upload_aab: true,
+        skip_upload_metadata: true,
+        skip_upload_images: true,
+        skip_upload_screenshots: false,
+        skip_upload_changelogs: true,
+        metadata_path: staging_dir,
+        sync_image_upload: true
+      )
+    ensure
+      FileUtils.rm_rf(staging_dir) if Dir.exist?(staging_dir)
+    end
+  end
+end
+
+################################################################
+# Helpers
+################################################################
+
+# Check for TODO TRANSLATE markers in locale metadata files.
+# Exits lane if any are found.
+def check_no_untranslated(metadata_dir, locales, files)
+  issues = []
+  locales.each do |locale|
+    files.each do |f|
+      path = File.join(metadata_dir, locale, f)
+      if !File.exist?(path)
+        issues << "MISSING: #{path}"
+      elsif File.read(path).include?("TODO TRANSLATE:")
+        issues << "UNTRANSLATED: #{path}"
+      end
+    end
+  end
+  unless issues.empty?
+    issues.each { |msg| UI.error(msg) }
+    UI.user_error!("Untranslated metadata found — fix TODO TRANSLATE markers before pushing")
+  end
+  UI.success "All metadata present and translated"
+end
+
+################################################################
+# Shared lanes
+################################################################
+desc "Pull metadata from both App Store Connect and Google Play"
+lane :metadata_pull_all do
+  kinship_release_gate!
+  sh("bundle", "exec", "fastlane", "ios", "metadata_pull")
+  sh("bundle", "exec", "fastlane", "android", "metadata_pull")
+end
+
+desc "Check credentials and connectivity for both stores"
+lane :metadata_check_all do
+  kinship_release_gate!
+  sh("bundle", "exec", "fastlane", "ios", "metadata_check")
+  sh("bundle", "exec", "fastlane", "android", "metadata_check")
+end
+
+desc "Push metadata to both stores"
+lane :metadata_push_all do
+  kinship_release_gate!
+  sh("bundle", "exec", "fastlane", "ios", "metadata_push")
+  sh("bundle", "exec", "fastlane", "android", "metadata_push")
+end
+
+desc "Push screenshots to both stores"
+lane :screenshot_push_all do
+  kinship_release_gate!
+  sh("bundle", "exec", "fastlane", "ios", "screenshot_push")
+  sh("bundle", "exec", "fastlane", "android", "screenshot_push")
+end

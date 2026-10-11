@@ -1,0 +1,7 @@
+Kinship hilft dir, deine Instagram-Kontakte anhand deines offiziellen Instagram-Exports zu verstehen.
+
+Importiere eine Exportdatei auf deinem Gerät, um deine aktuellen Follower- und Folge-ich-Listen anzusehen. Prüfe deine Kontakte, ohne dein Instagram-Passwort zu teilen.
+
+Kinship meldet sich nicht bei Instagram an und lädt deinen Export nicht hoch. Die Ergebnisse entsprechen den Angaben in deinem Export und zeigen möglicherweise keine späteren Änderungen.
+
+Kinship ist eine unabhängige App und steht in keiner Verbindung zu Instagram oder Meta.
