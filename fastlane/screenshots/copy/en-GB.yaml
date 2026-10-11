@@ -1,0 +1,63 @@
+locale: en-GB
+name: "3D Print Cost Calculator"
+screenshots:
+  - asset: calculator_free
+    heading:
+      - text: "Calculate"
+        style: accent
+      - text: " True Print Cost"
+        style: primary
+
+  - asset: batch_quotes
+    heading:
+      - text: "Price"
+        style: accent
+      - text: " Batch Jobs"
+        style: primary
+
+  - asset: materials
+    heading:
+      - text: "Track"
+        style: accent
+      - text: " Materials"
+        style: primary
+
+  - asset: gcode_import
+    heading:
+      - text: "Import"
+        style: accent
+      - text: " G-Code"
+        style: primary
+
+  - asset: history_export
+    heading:
+      - text: "Save"
+        style: accent
+      - text: " Cost History"
+        style: primary
+
+  - asset: settings_free
+    heading:
+      - text: "Set"
+        style: accent
+      - text: " Your Defaults"
+        style: primary
+
+  - asset: calculator_pro
+    heading:
+      - text: "Unlock"
+        style: accent
+      - text: " Advanced Pricing"
+        style: primary
+
+  - asset: settings_pro
+    heading:
+      - line:
+          - text: "No Accounts."
+            style: accent
+      - line:
+          - text: "No Cloud."
+            style: primary
+      - line:
+          - text: "Just Works."
+            style: accent
