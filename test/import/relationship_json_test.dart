@@ -122,6 +122,39 @@ void main() {
     expect(parsed.invalidCount, 1);
   });
 
+  test('empty href is absent while malformed nonempty href is rejected', () {
+    final parsed = parseRelationshipJson(
+      'followers.json',
+      _bytes([
+        _row('account', href: ''),
+        _row('hostile', href: 'https://www.instagram.com.evil/hostile/'),
+      ]),
+    );
+    expect(parsed.records.single.identity, 'account');
+    expect(parsed.invalidCount, 1);
+  });
+
+  test('root metadata rows are not classified as malformed followers', () {
+    expect(
+      () => parseRelationshipJson(
+        'metadata.json',
+        _bytes([
+          {'fbid': '1', 'label_values': [], 'media': [], 'timestamp': 1},
+          {'fbid': '2', 'label_values': [], 'media': [], 'timestamp': 2},
+        ]),
+      ),
+      throwsA(
+        isA<RelationshipJsonException>().having(
+          (error) => error.code,
+          'code',
+          RelationshipJsonErrorCode.unrecognizedStructure,
+        ),
+      ),
+    );
+    final mixed = parseRelationshipJson('followers.json', _bytes([_row('ok'), {}]));
+    expect(mixed.invalidCount, 1);
+  });
+
   test('strict UTF-8 decode', () {
     expect(
       () => parseRelationshipJson('f.json', [0xff]),

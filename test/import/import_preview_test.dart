@@ -390,6 +390,117 @@ void main() {
     },
   );
 
+  test('empty follower href is non-evidence; hostile href blocks completeness', () async {
+    final emptyHref = File('${root.path}/empty_href.json');
+    await emptyHref.writeAsString(
+      jsonEncode({
+        'followers': [
+          {
+            'string_list_data': [
+              {'value': 'synthetic_follower', 'href': ''},
+            ],
+          },
+        ],
+      }),
+    );
+    final preview = await parseImportInputs([emptyHref.path]);
+    expect(preview.sides[RelationshipSide.followers]!.invalidCount, 0);
+    expect(
+      prepareSnapshot(preview, const {
+        RelationshipSide.followers: Coverage.complete,
+      }),
+      isA<Success<RelationshipSnapshot>>(),
+    );
+
+    final hostileHref = File('${root.path}/hostile_href.json');
+    await hostileHref.writeAsString(
+      jsonEncode({
+        'followers': [
+          {
+            'string_list_data': [
+              {
+                'value': 'synthetic_follower',
+                'href': 'https://www.instagram.com.evil/synthetic_follower/',
+              },
+            ],
+          },
+        ],
+      }),
+    );
+    final hostilePreview = await parseImportInputs([hostileHref.path]);
+    expect(hostilePreview.sides[RelationshipSide.followers]!.invalidCount, 1);
+    expect(
+      prepareSnapshot(hostilePreview, const {
+        RelationshipSide.followers: Coverage.complete,
+      }),
+      isA<Failure<RelationshipSnapshot>>(),
+    );
+  });
+
+  test('ignores homogeneous unrelated root metadata lists', () async {
+    final archive = File('${root.path}/synthetic_metadata.zip')
+      ..writeAsBytesSync(
+        _storedZipEntries([
+          _ZipEntry(
+            'followers_1.json',
+            utf8.encode(jsonEncode([_row('synthetic_follower', 1)])),
+          ),
+          _ZipEntry(
+            'following.json',
+            utf8.encode(
+              jsonEncode({
+                'relationships_following': [_row('synthetic_following', 2)],
+              }),
+            ),
+          ),
+          for (final entry in [
+            ('blocked_profiles.json', 2),
+            ('recent_follow_requests.json', 23),
+            ('recently_unfollowed_profiles.json', 76),
+          ])
+            _ZipEntry(
+              entry.$1,
+              utf8.encode(
+                jsonEncode([
+                  for (var index = 0; index < entry.$2; index++)
+                    {
+                      'fbid': '$index',
+                      'label_values': [],
+                      'media': [],
+                      'timestamp': index,
+                    },
+                ]),
+              ),
+            ),
+        ]),
+      );
+    final preview = await parseImportInputs([archive.path]);
+    expect(preview.recognizedFileCount, 2);
+    expect(preview.sides[RelationshipSide.followers]!.invalidCount, 0);
+    expect(
+      prepareSnapshot(preview, const {
+        RelationshipSide.followers: Coverage.complete,
+        RelationshipSide.following: Coverage.complete,
+      }),
+      isA<Success<RelationshipSnapshot>>(),
+    );
+
+    final malformed = File('${root.path}/malformed_followers.json')
+      ..writeAsStringSync(
+        jsonEncode({
+          'followers': [_row('synthetic_follower', 1), {}],
+        }),
+      );
+    final malformedPreview = await parseImportInputs([malformed.path]);
+    expect(malformedPreview.sides[RelationshipSide.followers]!.invalidCount, 1);
+    expect(
+      prepareSnapshot(malformedPreview, const {
+        RelationshipSide.followers: Coverage.complete,
+      }),
+      isA<Failure<RelationshipSnapshot>>(),
+    );
+  });
+
   test(
     'invalid PK signature, input count/byte limits and cleanup use safe errors',
     () async {

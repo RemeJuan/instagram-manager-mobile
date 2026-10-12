@@ -109,7 +109,15 @@ ParsedRelationshipFile parseRelationshipJson(
       RelationshipJsonErrorCode.invalidEncodingOrSyntax,
     );
   }
-  if (decoded is List) return _parseRows(RelationshipSide.followers, decoded);
+  if (decoded is List) {
+    if (_isUnrelatedMetadataList(decoded)) {
+      throw RelationshipJsonException(
+        'Unrecognized relationship JSON structure.',
+        RelationshipJsonErrorCode.unrecognizedStructure,
+      );
+    }
+    return _parseRows(RelationshipSide.followers, decoded);
+  }
   if (decoded is! Map) {
     throw RelationshipJsonException(
       'Unrecognized relationship JSON structure.',
@@ -218,6 +226,21 @@ ParsedRelationshipFile parseRelationshipJson(
 }
 
 const _rowLimit = 1000000;
+bool _isUnrelatedMetadataList(List<dynamic> rows) =>
+    rows.isNotEmpty &&
+    rows.every(
+      (row) =>
+          row is Map &&
+          !row.containsKey('string_list_data') &&
+          row.keys.every(
+            (key) =>
+                key == 'fbid' ||
+                key == 'label_values' ||
+                key == 'media' ||
+                key == 'timestamp',
+          ),
+    );
+
 Never _throwRowLimit() => throw RelationshipJsonException(
   'Relationship row limit exceeded.',
   RelationshipJsonErrorCode.rowLimitExceeded,
@@ -323,7 +346,7 @@ RelationshipRecord? _parseRow(Object? value) {
         if (source.trim().isNotEmpty) candidates.add(source.trim());
       }
     }
-    if (raw['href'] != null) {
+    if (raw['href'] != null && raw['href'] != '') {
       final hrefIdentity = _usernameFromHref(raw['href']);
       if (hrefIdentity == null) return null;
       candidates.add(hrefIdentity);
