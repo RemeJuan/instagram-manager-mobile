@@ -44,7 +44,6 @@ class _ImportHomeScreenState extends State<ImportHomeScreen> {
   AppLocalizations get l => AppLocalizations.of(context)!;
   ParsedImport? _preview;
   final _choices = <RelationshipSide, Coverage>{};
-  final _acknowledged = <RelationshipSide>{};
   final _proposals = <RelationshipSide, AbsenceReviewProposal>{};
   final _counts = <RelationshipCategory, int?>{};
   final _rows = <RelationshipRow>[];
@@ -137,7 +136,6 @@ class _ImportHomeScreenState extends State<ImportHomeScreen> {
       _reviewReady = false;
       _proposals.clear();
       _choices.clear();
-      _acknowledged.clear();
     });
     try {
       final parsed = await widget.workspace.pickAndParse();
@@ -175,7 +173,6 @@ class _ImportHomeScreenState extends State<ImportHomeScreen> {
 
   void _choose(RelationshipSide side, Coverage coverage) {
     setState(() {
-      if (_choices[side] != coverage) _acknowledged.remove(side);
       _choices[side] = coverage;
       _reviewReady = false;
       _proposals.clear();
@@ -185,7 +182,7 @@ class _ImportHomeScreenState extends State<ImportHomeScreen> {
 
   Future<void> _reviewImport() async {
     final preview = _preview;
-    if (_busy || preview == null || !_allAcknowledged) return;
+    if (_busy || preview == null) return;
     setState(() {
       _busy = true;
       _reviewReady = false;
@@ -219,7 +216,7 @@ class _ImportHomeScreenState extends State<ImportHomeScreen> {
 
   Future<void> _confirm() async {
     final preview = _preview;
-    if (_busy || !_reviewReady || preview == null || !_allAcknowledged) return;
+    if (_busy || !_reviewReady || preview == null) return;
     setState(() {
       _busy = true;
       _reviewReady = false;
@@ -261,9 +258,6 @@ class _ImportHomeScreenState extends State<ImportHomeScreen> {
       if (mounted) setState(() => _busy = false);
     }
   }
-
-  bool get _allAcknowledged =>
-      _preview != null && _preview!.sides.keys.every(_acknowledged.contains);
 
   Future<void> _reloadDashboard() async {
     _offset = 0;
@@ -852,7 +846,7 @@ class _ImportHomeScreenState extends State<ImportHomeScreen> {
             const SizedBox(height: 16),
             FilledButton(
               key: const Key('review-import'),
-              onPressed: _busy || !_allAcknowledged ? null : _reviewImport,
+              onPressed: _busy ? null : _reviewImport,
               child: Text(l.reviewImpact),
             ),
             if (_reviewReady) ...[
@@ -927,22 +921,6 @@ class _ImportHomeScreenState extends State<ImportHomeScreen> {
             ],
           ),
           if (data.invalidCount > 0) Text(l.completeUnavailable),
-          CheckboxListTile(
-            key: Key('ack-${side.name}'),
-            contentPadding: EdgeInsets.zero,
-            title: Text(l.acknowledgeSide(label, _coverageLabel(choice))),
-            value: _acknowledged.contains(side),
-            onChanged: _busy
-                ? null
-                : (value) => setState(() {
-                    if (value == true) {
-                      _acknowledged.add(side);
-                    } else {
-                      _acknowledged.remove(side);
-                    }
-                    _reviewReady = false;
-                  }),
-          ),
         ],
       ),
     );

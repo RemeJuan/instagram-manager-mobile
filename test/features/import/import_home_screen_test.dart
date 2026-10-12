@@ -234,7 +234,7 @@ void main() {
   });
 
   testWidgets(
-    'partial default requires each present side acknowledged; cancel quiet',
+    'partial default can review without extra confirmation; cancel quiet',
     (tester) async {
       await tester.pumpWidget(buildScreen());
       await pick(tester);
@@ -243,41 +243,27 @@ void main() {
         tester
             .widget<FilledButton>(find.byKey(const Key('review-import')))
             .onPressed,
-        isNull,
-      );
-      expect(
-        tester
-            .widget<ChoiceChip>(find.byKey(const Key('partial-following')))
-            .selected,
-        isTrue,
-      );
-      await show(tester, const Key('ack-following'));
-      await tester.tap(find.byKey(const Key('ack-following')));
-      await tester.pump();
-      expect(
-        tester
-            .widget<FilledButton>(find.byKey(const Key('review-import')))
-            .onPressed,
-        isNull,
-      );
-      await show(tester, const Key('ack-followers'));
-      await tester.tap(find.byKey(const Key('ack-followers')));
-      await tester.pump();
-      expect(
-        tester
-            .widget<FilledButton>(find.byKey(const Key('review-import')))
-            .onPressed,
         isNotNull,
       );
-      await show(tester, const Key('complete-following'));
-      await tester.tap(find.byKey(const Key('complete-following')));
-      await show(tester, const Key('review-import'));
-      expect(
-        tester
-            .widget<FilledButton>(find.byKey(const Key('review-import')))
-            .onPressed,
-        isNull,
-      );
+      for (final side in RelationshipSide.values) {
+        expect(
+          tester
+              .widget<ChoiceChip>(find.byKey(Key('partial-${side.name}')))
+              .selected,
+          isTrue,
+        );
+        expect(
+          tester
+              .widget<ChoiceChip>(find.byKey(Key('complete-${side.name}')))
+              .selected,
+          isFalse,
+        );
+      }
+      expect(find.byType(CheckboxListTile), findsNothing);
+      await tapWithIo(tester, const Key('review-import'));
+      await show(tester, const Key('confirm-import'));
+      expect(find.textContaining('No absence is proposed'), findsOneWidget);
+      expect(find.byKey(const Key('confirm-import')), findsOneWidget);
       expect(find.textContaining('Recognized files: 2'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
       await tester.pumpWidget(buildScreen(cancel: true));
@@ -309,7 +295,10 @@ void main() {
     await pick(tester);
     await show(tester, const Key('missing-followers'));
     expect(find.text('Followers: missing · unknown, not zero'), findsOneWidget);
-    expect(find.byKey(const Key('ack-followers')), findsNothing);
+    expect(find.byKey(const Key('complete-followers')), findsNothing);
+    await tapWithIo(tester, const Key('review-import'));
+    await show(tester, const Key('confirm-import'));
+    expect(find.byKey(const Key('confirm-import')), findsOneWidget);
   });
 
   testWidgets('complete review separates prior present and unknown omissions', (
@@ -327,9 +316,6 @@ void main() {
     await show(tester, const Key('complete-following'));
     await tester.tap(find.byKey(const Key('complete-following')));
     await tester.pump();
-    await tester.tap(find.byKey(const Key('ack-following')));
-    await show(tester, const Key('ack-followers'));
-    await tester.tap(find.byKey(const Key('ack-followers')));
     await show(tester, const Key('review-import'));
     await tester.tap(find.byKey(const Key('review-import')));
     await tester.pumpAndSettle();
@@ -348,6 +334,13 @@ void main() {
     );
     expect(find.textContaining('prior_one'), findsWidgets);
     expect(opened, isEmpty);
+    await show(tester, const Key('partial-following'));
+    await tester.tap(find.byKey(const Key('partial-following')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('confirm-import')), findsNothing);
+    await tapWithIo(tester, const Key('review-import'));
+    await show(tester, const Key('confirm-import'));
+    expect(find.textContaining('No absence is proposed'), findsOneWidget);
   });
 
   testWidgets(
@@ -356,8 +349,6 @@ void main() {
       preview = fixture(followers: false);
       await tester.pumpWidget(buildScreen());
       await pick(tester);
-      await show(tester, const Key('ack-following'));
-      await tester.tap(find.byKey(const Key('ack-following')));
       await show(tester, const Key('review-import'));
       await tester.tap(find.byKey(const Key('review-import')));
       await tester.pumpAndSettle();
@@ -378,8 +369,6 @@ void main() {
       await show(tester, const Key('import-notice'));
       expect(find.text('Import saved on this device.'), findsOneWidget);
       await pick(tester);
-      await show(tester, const Key('ack-following'));
-      await tester.tap(find.byKey(const Key('ack-following')));
       await tapWithIo(tester, const Key('review-import'));
       await tapWithIo(tester, const Key('confirm-import'));
       await show(tester, const Key('import-notice'));
