@@ -1,6 +1,6 @@
 # Kinship landing page plan
 
-Plan and publication gates for the single-page static teaser on orphan `gh-pages`, built with Eleventy/Nunjucks and CSS. Branch existence does not establish GitHub Pages live deployment. No verified custom domain, live support/privacy destination, or product launch status is implied.
+Plan and publication gates for the static teaser on orphan `gh-pages`, built with Eleventy/Nunjucks and CSS. Live deployments and URL state are recorded below; public availability does not establish privacy/legal approval or product launch status.
 
 ## Purpose and audience
 
@@ -9,11 +9,11 @@ Give prospective iOS users a calm, accurate introduction to Kinship: a local-fir
 ## Information architecture
 
 - **Home (`/`)**: concise product description, how it works, data-handling summary, limitations, and links only to destinations verified before publication.
-- **Privacy (`/privacy/`)**: public page at `https://remejuan.github.io/instagram-manager-mobile/privacy/`; owner/legal approval and release-build accuracy validation remain outstanding.
-- **Support (`/support/`)**: public page at `https://remejuan.github.io/instagram-manager-mobile/support/`; owner/legal approval and support-contact verification remain outstanding.
+- **Privacy (`/privacy/`)**: public page at `https://kinship.click/privacy/`; owner/legal approval and release-build accuracy validation remain outstanding.
+- **Support (`/support/`)**: public page at `https://kinship.click/support/`; owner/legal approval and support-contact verification remain outstanding.
 - **Store destinations**: omit until each official listing URL and availability are verified. No fabricated badges or placeholder links.
 
-Home links the verified public policy and support pages. Avoid contact forms, analytics, embedded third-party assets, and collection of visitor data in the static site.
+Home links the public policy and support pages. Avoid contact forms, analytics, embedded third-party assets, and collection of visitor data in the static site.
 
 ## Messaging and content direction
 
@@ -32,17 +32,17 @@ Visual direction: quiet editorial product explainer, readable type, ample whites
 - Responsive home, privacy, and support pages; concise explanation, how-it-works steps, boundaries, nonaffiliation, and links only when destination verified.
 - Eleventy/Nunjucks and simple CSS, following the sample site's static Eleventy/Nunjucks structure and GitHub Actions Pages deployment pattern. Pages currently use independent templates rather than a shared layout. Reuse concepts, not its domain, content, assets, or deployment assumptions.
 - Deploy from orphan `gh-pages` branch using GitHub Actions. Configure repository Pages source as **GitHub Actions**, not branch/folder publishing.
-- Live URLs: home `https://remejuan.github.io/instagram-manager-mobile/`, privacy `https://remejuan.github.io/instagram-manager-mobile/privacy/`, support `https://remejuan.github.io/instagram-manager-mobile/support/`. Deployment recorded from successful workflow run `38224067074`; all three live HTTPS URLs returned HTTP 200 and content was verified. No custom domain yet; a later domain change requires owner control and URL verification. Public reachability does not equal privacy/legal or release approval.
+- GitHub Pages URLs: home `https://remejuan.github.io/instagram-manager-mobile/`, privacy `https://remejuan.github.io/instagram-manager-mobile/privacy/`, support `https://remejuan.github.io/instagram-manager-mobile/support/`. Workflow `38224067074` succeeded; all three HTTPS URLs returned HTTP 200 and content was verified. Current custom-domain URLs are `https://kinship.click/`, `/privacy/`, and `/support/`; all are live over HTTPS and returned HTTP 200. GitHub Pages HTTPS enforcement is enabled (`https_enforced=true`). Optional GitHub account-level TXT ownership verification may add takeover protection; it is not required for working domain, HTTPS, endpoints, or release. Public reachability does not equal privacy/legal or release approval.
 
 ### Later, gated
 
-- Publish `/privacy/` and `/support/` only after owner, legal, technical, contact, and URL checks below. The existing drafts are inputs, not approved or published policies.
+- Before treating the already-live `/privacy/` and `/support/` pages as approved policy and support disclosures, complete owner, legal, technical, contact, and URL checks below. Draft content remains unapproved.
 - Add app-store links only after official listing destinations and availability are verified. Recheck copy whenever release behavior, SDKs, data flows, or support process changes.
-- Any analytics, form, external service, or custom domain requires separate data-flow/privacy review and owner approval before addition.
+- Any future analytics, form, external service, or domain change requires separate data-flow/privacy review and owner approval before addition. Existing custom domain still needs owner/legal sign-off.
 
 ## URL, metadata, and Pages setup
 
-- Confirm repository name, GitHub Pages project URL, repository visibility/Pages eligibility, and exact URL in repository settings. Do not presume `kinship.click` or any other domain works or is controlled; no custom domain/CNAME for this phase.
+- Confirm repository name, GitHub Pages project URL, repository visibility/Pages eligibility, and exact URL in repository settings. `kinship.click` is live over HTTPS; recheck domain control and DNS before release or subsequent URL changes.
 - Set one canonical base URL from verified Pages configuration. Ensure canonical, Open Graph, sitemap, and internal links use correct project path; omit or leave metadata unset rather than publishing guessed URLs. Do not emit misleading organization address, contact, store, privacy, or support links.
 - Use descriptive page title and summary, stable relative URLs, favicon only if approved/original, and no unsupported claims in social preview. Add sitemap only when URLs are stable and public.
 - Enable Pages deployment workflow with least necessary permissions (`contents: read`, Pages write, deployment write), build from `gh-pages`, upload generated output, deploy via official Pages Actions. Protect workflow changes through normal repository review. Verify Pages source says GitHub Actions and deployment environment/URL after setup.
@@ -74,7 +74,7 @@ Both pages are live, but their drafts still require owner/legal approval, verifi
 - [ ] Verify GitHub Pages configured to **GitHub Actions**; workflow builds orphan `gh-pages` source and deploys expected artifact.
 - [ ] After deployment, open actual Pages URL and every published route; check HTTPS, redirects, asset paths, canonical/social URLs, and no 404s.
 - [x] Deployment workflow run `38224067074` succeeded; home, privacy, and support HTTPS URLs returned HTTP 200 and content was verified.
-- [x] URL-only App Store Connect update completed Oct 12 2026; independent GET-only readback matched all 21 URL fields across seven locales.
+- [x] Guarded URL-only App Store Connect sync to `kinship.click` updated 21 URL fields across seven locales; independent GET-only readback at 10:56 Oct 12 2026 confirmed all 21 fields match local values and non-URL fields match.
 - [ ] Record review evidence for desktop/mobile widths, keyboard, screen reader, zoom/reflow, contrast, and link checks; remediate blockers before publication.
 - [ ] Fact-check all product, local-storage, export, purchase, backup, deletion, support, and availability claims against release build and current dependencies.
 - [ ] Owner/legal reviewer approves published privacy/support copy; verify owner identity, monitored contacts, vendor policy URLs, and domain control.
@@ -83,8 +83,8 @@ Both pages are live, but their drafts still require owner/legal approval, verifi
 
 ## Release privacy checklist alignment
 
-Before publishing or linking privacy/support destinations, complete the release checklist: verify local import and no export/list transmission; inspect dependencies, traffic, SDK configuration and analytics/crash tooling; validate RevenueCat and Apple disclosures and current vendor links; verify SQLite retention, deletion, reinstall and backup behavior; resolve owner, effective date, jurisdiction/children, privacy and support contacts; obtain legal/factual review; verify URLs are live and controlled. Do not describe optional RevenueCat Customer Center as available unless implemented. See [`release-privacy-disclosure-checklist.md`](release-privacy-disclosure-checklist.md).
+Privacy/support destinations are already live and linked. Before approving disclosures or release, complete the release checklist: verify local import and no export/list transmission; inspect dependencies, traffic, SDK configuration and analytics/crash tooling; validate RevenueCat and Apple disclosures and current vendor links; verify SQLite retention, deletion, reinstall and backup behavior; resolve owner, effective date, jurisdiction/children, privacy and support contacts; obtain legal/factual review; verify URLs are live and controlled. Do not describe optional RevenueCat Customer Center as available unless implemented. See [`release-privacy-disclosure-checklist.md`](release-privacy-disclosure-checklist.md).
 
 ## Current status
 
-The pages are available on GitHub Pages at URLs above (workflow `38224067074`; all returned HTTP 200 with content verified) and on custom domain `https://kinship.click/`, `/privacy/`, and `/support/` (live HTTPS, HTTP 200). GitHub Pages HTTPS enforcement is enabled (`https_enforced=true`). Optional GitHub account-level TXT ownership verification can add takeover protection; it is not required for the already working domain, HTTPS, endpoints, or release. On Oct 12 2026, guarded URL-only App Store Connect sync updated 21 URL fields across seven locales, with per-write and final checks matching. Independent GET-only `bundle exec fastlane ios metadata_readback` at 10:56 confirmed all 21 URL fields match local root values and non-URL fields match. Operator: Reme Le Hane, South Africa; contact provided: `google@remej.dev`. Owner/legal approval, release-build privacy/disclosure accuracy, physical-device/TestFlight gates, and real purchase validation remain outstanding. Public policy availability and URL updates do not constitute release approval.
+The home, privacy, and support pages are live at the GitHub Pages URLs above and custom-domain URLs `https://kinship.click/`, `/privacy/`, and `/support/`; each returned HTTP 200 with content verified. GitHub Pages HTTPS enforcement is enabled (`https_enforced=true`). Optional GitHub account-level TXT ownership verification is takeover protection, not a prerequisite for current endpoints or release. On Oct 12 2026, guarded URL-only App Store Connect sync updated 21 URL fields across seven locales. Independent GET-only `bundle exec fastlane ios metadata_readback` at 10:56 confirmed all 21 URL fields match local root values and non-URL fields match. Operator-supplied details: Reme Le Hane, South Africa; `google@remej.dev`; owner/legal confirmation remains outstanding. Owner/legal approval, release-build privacy/disclosure accuracy, physical-device/TestFlight gates, and real purchase validation remain outstanding. Public policy availability and URL updates do not constitute release approval.
