@@ -219,6 +219,55 @@ void main() {
     expect(await staging.list().toList(), isEmpty);
   });
 
+  test(
+    'accepts ordinary filename, DOS attributes and deflate option flags',
+    () async {
+      final variants = <List<int>>[
+        _withFlags(_zip(0), 0),
+        _withAttributes(_zip(0), 0x10),
+        _withFlags(_zip(8), 0x0006 | 0x0800),
+      ];
+      for (var i = 0; i < variants.length; i++) {
+        final source = File('${root.path}/ordinary-$i.zip')
+          ..writeAsBytesSync(variants[i]);
+        await withValidatedZipEntries(source, staging, (entries) async {
+          expect(await entries.single.file.readAsString(), 'safe json');
+        });
+      }
+    },
+  );
+
+  test('accepts Unix regular and DOS attributes with low bits set', () async {
+    for (final attrs in [0x81a40020, 0x00000020]) {
+      final source = File('${root.path}/ordinary-attrs-$attrs.zip')
+        ..writeAsBytesSync(_withAttributes(_zip(0), attrs));
+      await withValidatedZipEntries(source, staging, (entries) async {
+        expect(await entries.single.file.readAsString(), 'safe json');
+      });
+    }
+  });
+
+  test(
+    'rejects special Unix attributes and deflate option bits on stored entry',
+    () async {
+      for (final attrs in [0xa1ff0000]) {
+        final bytes = _withAttributes(_zip(0), attrs);
+        final source = File('${root.path}/special-$attrs.zip')
+          ..writeAsBytesSync(bytes);
+        await _expectRejected(source, staging, 'unsupported_attributes');
+      }
+      final mismatch = File('${root.path}/type-mismatch.zip')
+        ..writeAsBytesSync(
+          _withAttributes(_zip(0, name: 'folder/'), 0x81a40000),
+        );
+      await _expectRejected(mismatch, staging, 'unsupported_attributes');
+      final storedFlags = _withFlags(_zip(0), 0x0002 | 0x0800);
+      final source = File('${root.path}/stored-flags.zip')
+        ..writeAsBytesSync(storedFlags);
+      await _expectRejected(source, staging, 'unsupported_entry');
+    },
+  );
+
   test('rejects corrupted deflate payload and removes staging', () async {
     final bytes = _zip(8);
     final centralAt = bytes.length - 22 - _centralSize(bytes);
@@ -400,6 +449,19 @@ List<int> _zip(
     ..._u16(0),
   ];
   return [...local, ...central, ...eocd];
+}
+
+List<int> _withFlags(List<int> zip, int flags) {
+  final centralAt = zip.length - 22 - _centralSize(zip);
+  zip.setRange(6, 8, _u16(flags));
+  zip.setRange(centralAt + 8, centralAt + 10, _u16(flags));
+  return zip;
+}
+
+List<int> _withAttributes(List<int> zip, int attrs) {
+  final centralAt = zip.length - 22 - _centralSize(zip);
+  zip.setRange(centralAt + 38, centralAt + 42, _u32(attrs));
+  return zip;
 }
 
 List<int> _multiZip(List<List<int>> contents) {

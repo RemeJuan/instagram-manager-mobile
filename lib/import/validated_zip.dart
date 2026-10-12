@@ -195,7 +195,8 @@ Future<_Directory> _readDirectory(RandomAccessFile file, int eocd) async {
     _validateName(name);
     if (!names.add(name.toLowerCase())) _fail('duplicate_name');
     final method = _u16(h, 10), csize = _u32(h, 20), usize = _u32(h, 24);
-    if ((flags & ~(0x0800 | 0x0008)) != 0 ||
+    final allowedFlags = 0x0800 | 0x0008 | (method == 8 ? 0x0006 : 0);
+    if ((flags & ~allowedFlags) != 0 ||
         flags & 1 != 0 ||
         (method != 0 && method != 8) ||
         csize == 0xffffffff ||
@@ -205,7 +206,6 @@ Future<_Directory> _readDirectory(RandomAccessFile file, int eocd) async {
       _fail('unsupported_entry');
     }
     final attr = _u32(h, 38);
-    if (attr & 0x0000ffff != 0) _fail('unsupported_attributes');
     final mode = (attr >> 16) & 0xffff, type = mode & 0xf000;
     final isDir = name.endsWith('/');
     if ((type != 0 && type != 0x8000 && type != 0x4000) ||
@@ -282,7 +282,9 @@ Future<_Range> _localRange(
 }
 
 String _decodeName(List<int> b, int flags) {
-  if ((flags & 0x0800) == 0) _fail('unsafe_name');
+  if ((flags & 0x0800) == 0 && b.any((byte) => byte >= 0x80)) {
+    _fail('unsafe_name');
+  }
   try {
     final name = utf8.decode(b, allowMalformed: false);
     if (name.codeUnits.any((c) => c < 32 || c == 127)) {
