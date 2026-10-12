@@ -83,6 +83,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get aboutResults => 'About your results';
 
   @override
+  String get privacyPolicy => 'Privacy policy';
+
+  @override
+  String get support => 'Support';
+
+  @override
+  String get openInfoLinkFailed => 'Could not open the link. Please try again.';
+
+  @override
   String get snapshotCaveat =>
       'An export is a snapshot, not a record of follow or unfollow times. Export and import timestamps are not event times. Missing or partial sides cannot establish absence; a snapshot cannot prove a block, rename or deletion.';
 
@@ -529,6 +538,15 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
 
   @override
   String get aboutResults => 'About your results';
+
+  @override
+  String get privacyPolicy => 'Privacy policy';
+
+  @override
+  String get support => 'Support';
+
+  @override
+  String get openInfoLinkFailed => 'Could not open the link. Please try again.';
 
   @override
   String get snapshotCaveat =>

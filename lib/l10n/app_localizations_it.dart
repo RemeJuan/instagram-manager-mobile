@@ -85,6 +85,15 @@ class AppLocalizationsIt extends AppLocalizations {
   String get aboutResults => 'Informazioni sui risultati';
 
   @override
+  String get privacyPolicy => 'Informativa sulla privacy';
+
+  @override
+  String get support => 'Assistenza e contatti';
+
+  @override
+  String get openInfoLinkFailed => 'Impossibile aprire il link. Riprova.';
+
+  @override
   String get snapshotCaveat =>
       'Un export è un\'istantanea, non una registrazione degli orari in cui hai iniziato o smesso di seguire qualcuno. Gli orari di export e import non sono orari degli eventi. I lati mancanti o parziali non possono dimostrare un\'assenza; un\'istantanea non può provare un blocco, un cambio nome o una cancellazione.';
 

@@ -85,6 +85,16 @@ class AppLocalizationsEs extends AppLocalizations {
   String get aboutResults => 'Acerca de tus resultados';
 
   @override
+  String get privacyPolicy => 'Política de privacidad';
+
+  @override
+  String get support => 'Ayuda y contacto';
+
+  @override
+  String get openInfoLinkFailed =>
+      'No se pudo abrir el enlace. Inténtalo de nuevo.';
+
+  @override
   String get snapshotCaveat =>
       'Una exportación es una instantánea, no un registro de cuándo se siguió o dejó de seguir a alguien. Las fechas de exportación e importación no son fechas de los eventos. Las secciones ausentes o parciales no permiten confirmar una ausencia; una instantánea no demuestra un bloqueo, cambio de nombre ni eliminación.';
 

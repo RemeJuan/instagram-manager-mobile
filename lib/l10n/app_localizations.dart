@@ -248,6 +248,24 @@ abstract class AppLocalizations {
   /// **'About your results'**
   String get aboutResults;
 
+  /// No description provided for @privacyPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy policy'**
+  String get privacyPolicy;
+
+  /// No description provided for @support.
+  ///
+  /// In en, this message translates to:
+  /// **'Support'**
+  String get support;
+
+  /// No description provided for @openInfoLinkFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the link. Please try again.'**
+  String get openInfoLinkFailed;
+
   /// Do not imply that an export proves event times, absence for incomplete sides, block, rename, or deletion.
   ///
   /// In en, this message translates to:

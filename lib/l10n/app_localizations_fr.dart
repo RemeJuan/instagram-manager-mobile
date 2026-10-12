@@ -87,6 +87,15 @@ class AppLocalizationsFr extends AppLocalizations {
   String get aboutResults => 'À propos de vos résultats';
 
   @override
+  String get privacyPolicy => 'Politique de confidentialité';
+
+  @override
+  String get support => 'Aide et contact';
+
+  @override
+  String get openInfoLinkFailed => 'Impossible d’ouvrir le lien. Réessayez.';
+
+  @override
   String get snapshotCaveat =>
       'Un export est un instantané, pas un relevé des dates de suivi ou de désabonnement. Les dates d’export et d’import ne sont pas les dates des événements. Les sections manquantes ou partielles ne permettent pas d’établir une absence ; un instantané ne prouve ni blocage, ni changement de nom, ni suppression.';
 

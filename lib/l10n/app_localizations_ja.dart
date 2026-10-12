@@ -81,6 +81,15 @@ class AppLocalizationsJa extends AppLocalizations {
   String get aboutResults => '結果について';
 
   @override
+  String get privacyPolicy => 'プライバシーポリシー';
+
+  @override
+  String get support => 'サポート・お問い合わせ';
+
+  @override
+  String get openInfoLinkFailed => 'リンクを開けませんでした。もう一度お試しください。';
+
+  @override
   String get snapshotCaveat =>
       'エクスポートはスナップショットであり、フォローやフォロー解除の時刻を記録したものではありません。エクスポート時刻とインポート時刻もイベント時刻ではありません。欠落または一部のみの側から不在を確定することはできません。スナップショットでブロック、改名、削除を証明することもできません。';
 

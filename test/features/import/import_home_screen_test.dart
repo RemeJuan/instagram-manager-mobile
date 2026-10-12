@@ -98,6 +98,8 @@ void main() {
     bool cancel = false,
     String? errorCode,
     Locale? locale,
+    bool failLinks = false,
+    bool throwOnLinks = false,
   }) => MaterialApp(
     theme: KinshipTheme.light,
     locale: locale,
@@ -120,6 +122,8 @@ void main() {
       read: RelationshipReadRepository(db),
       openProfile: (uri) async {
         opened.add(uri);
+        if (throwOnLinks) throw StateError('Could not launch');
+        if (failLinks) return false;
         return true;
       },
       purchaseGateway: gateway,
@@ -186,6 +190,48 @@ void main() {
     });
     await tester.pumpAndSettle();
   }
+
+  testWidgets(
+    'privacy and support links open on both tabs without expanding About',
+    (tester) async {
+      await tester.pumpWidget(buildScreen());
+      expect(find.byKey(const Key('privacy-copy')), findsNothing);
+      await tester.tap(find.byKey(const Key('privacy-policy-link')));
+      await tester.pump();
+      expect(
+        opened.single.toString(),
+        'https://remejuan.github.io/instagram-manager-mobile/privacy/',
+      );
+      await tester.tap(find.byKey(const Key('nav-accounts')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('support-link')));
+      await tester.pump();
+      expect(
+        opened.last.toString(),
+        'https://remejuan.github.io/instagram-manager-mobile/support/',
+      );
+    },
+  );
+
+  testWidgets('external link failures show localized notice', (tester) async {
+    await tester.pumpWidget(buildScreen(failLinks: true));
+    await tester.tap(find.byKey(const Key('privacy-policy-link')));
+    await tester.pump();
+    expect(
+      find.text('Could not open the link. Please try again.'),
+      findsOneWidget,
+    );
+    await tester.pumpWidget(
+      buildScreen(throwOnLinks: true, locale: const Locale('en', 'GB')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('support-link')));
+    await tester.pump();
+    expect(
+      find.text('Could not open the link. Please try again.'),
+      findsOneWidget,
+    );
+  });
 
   testWidgets(
     'partial default requires each present side acknowledged; cancel quiet',
