@@ -72,7 +72,7 @@ Pull iOS metadata from App Store Connect
 [bundle exec] fastlane ios metadata_push
 ```
 
-Push metadata to App Store Connect (no binary, no screenshots)
+DISABLED: iOS metadata push (partial write; retry risks review attachment deletion)
 
 ### ios metadata_readback
 

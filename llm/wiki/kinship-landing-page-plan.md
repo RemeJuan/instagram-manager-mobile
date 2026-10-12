@@ -9,11 +9,11 @@ Give prospective iOS users a calm, accurate introduction to Kinship: a local-fir
 ## Information architecture
 
 - **Home (`/`)**: concise product description, how it works, data-handling summary, limitations, and links only to destinations verified before publication.
-- **Privacy (`/privacy/`, proposed later)**: owner-approved, release-accurate privacy policy.
-- **Support (`/support/`, proposed later)**: verified monitored contact and practical import/purchase help.
+- **Privacy (`/privacy/`)**: public page at `https://remejuan.github.io/instagram-manager-mobile/privacy/`; owner/legal approval and release-build accuracy validation remain outstanding.
+- **Support (`/support/`)**: public page at `https://remejuan.github.io/instagram-manager-mobile/support/`; owner/legal approval and support-contact verification remain outstanding.
 - **Store destinations**: omit until each official listing URL and availability are verified. No fabricated badges or placeholder links.
 
-For teaser-only scope, home can state that policy and support pages are being prepared only if owner approves that wording; do not link dead or draft URLs. Avoid contact forms, analytics, embedded third-party assets, and collection of visitor data in initial static site.
+Home links the verified public policy and support pages. Avoid contact forms, analytics, embedded third-party assets, and collection of visitor data in the static site.
 
 ## Messaging and content direction
 
@@ -29,10 +29,10 @@ Visual direction: quiet editorial product explainer, readable type, ample whites
 
 ### Now: static teaser plan
 
-- Single responsive home page; concise explanation, how-it-works steps, boundaries, nonaffiliation, and links only when destination verified.
-- Eleventy/Nunjucks and simple CSS, following the sample site's static Eleventy/Nunjucks structure and GitHub Actions Pages deployment pattern. Current teaser is single-page with no shared layout. Reuse concepts, not its domain, content, assets, or deployment assumptions.
+- Responsive home, privacy, and support pages; concise explanation, how-it-works steps, boundaries, nonaffiliation, and links only when destination verified.
+- Eleventy/Nunjucks and simple CSS, following the sample site's static Eleventy/Nunjucks structure and GitHub Actions Pages deployment pattern. Pages currently use independent templates rather than a shared layout. Reuse concepts, not its domain, content, assets, or deployment assumptions.
 - Deploy from orphan `gh-pages` branch using GitHub Actions. Configure repository Pages source as **GitHub Actions**, not branch/folder publishing.
-- No custom domain yet. Use actual GitHub Pages URL determined from repository/owner settings only after verification; account for project-site path prefix in links and metadata.
+- Live URLs: home `https://remejuan.github.io/instagram-manager-mobile/`, privacy `https://remejuan.github.io/instagram-manager-mobile/privacy/`, support `https://remejuan.github.io/instagram-manager-mobile/support/`. Deployment recorded from successful workflow run `38224067074`; all three live HTTPS URLs returned HTTP 200 and content was verified. No custom domain yet; a later domain change requires owner control and URL verification. Public reachability does not equal privacy/legal or release approval.
 
 ### Later, gated
 
@@ -58,7 +58,7 @@ Use [`draft-privacy-policy.md`](draft-privacy-policy.md) as an unapproved draft.
 
 Use [`draft-support-copy.md`](draft-support-copy.md) as unapproved copy. Owner must provide a real monitored contact and verify it works, define safe support intake, and approve what information can be requested. Tell users not to send exports, usernames, relationship lists, passwords, or receipts through unverified channels. Verify import/purchase guidance, live privacy link, app-version instructions, and every claim against release build.
 
-Both proposed pages require confirmed URL ownership/control and successful public URL checks before linking from the landing page or store fields. Do not represent draft pages as live. Store URL fields alone do not prove destinations work. Align final copy with [`release-privacy-disclosure-checklist.md`](release-privacy-disclosure-checklist.md) and release record [`KINSHIP_RELEASE.md`](../../fastlane/KINSHIP_RELEASE.md); neither is evidence that site pages or store submission are ready.
+Both pages are live, but their drafts still require owner/legal approval, verified contact details, and release-build accuracy checks before disclosures are treated as approved. Align final copy with [`release-privacy-disclosure-checklist.md`](release-privacy-disclosure-checklist.md) and release record [`KINSHIP_RELEASE.md`](../../fastlane/KINSHIP_RELEASE.md). Public availability is not evidence of release readiness.
 
 ## Accessibility and content checks
 
@@ -73,6 +73,8 @@ Both proposed pages require confirmed URL ownership/control and successful publi
 - [ ] Build locally with pinned/declared dependencies; inspect generated output and confirm no unintended files or draft disclosures shipped.
 - [ ] Verify GitHub Pages configured to **GitHub Actions**; workflow builds orphan `gh-pages` source and deploys expected artifact.
 - [ ] After deployment, open actual Pages URL and every published route; check HTTPS, redirects, asset paths, canonical/social URLs, and no 404s.
+- [x] Deployment workflow run `38224067074` succeeded; home, privacy, and support HTTPS URLs returned HTTP 200 and content was verified.
+- [x] URL-only App Store Connect update completed Oct 12 2026; independent GET-only readback matched all 21 URL fields across seven locales.
 - [ ] Record review evidence for desktop/mobile widths, keyboard, screen reader, zoom/reflow, contrast, and link checks; remediate blockers before publication.
 - [ ] Fact-check all product, local-storage, export, purchase, backup, deletion, support, and availability claims against release build and current dependencies.
 - [ ] Owner/legal reviewer approves published privacy/support copy; verify owner identity, monitored contacts, vendor policy URLs, and domain control.
@@ -85,4 +87,4 @@ Before publishing or linking privacy/support destinations, complete the release 
 
 ## Current status
 
-The single-page teaser exists in the orphan `gh-pages` worktree. Branch push is pending validation; Pages live deployment and public reachability are unconfirmed. No custom domain is assumed. Privacy/support drafts and store URL fields are not proof of publication or reachability. This status is evergreen: update only when branch, Pages configuration, deployment, and public URLs are actually verified; do not infer deployment or launch from a push.
+The home, privacy, and support pages are published at the URLs above. Workflow run `38224067074` succeeded; all three live HTTPS URLs returned HTTP 200 and content was verified. On Oct 12 2026, URL-only App Store Connect lane updated 21 fields across seven locales with matching in-process checks. Independent GET-only `bundle exec fastlane ios metadata_readback` completed at 10:34 Oct 12: all 21 privacy/support/marketing URL fields match local root files across seven locales, and non-URL fields match. Operator: Reme Le Hane, South Africa; contact provided: `google@remej.dev`. Owner/legal approval, release-build privacy/disclosure accuracy, physical-device/TestFlight gates, and real purchase validation remain outstanding. Public policy availability and URL updates do not constitute release approval. No custom domain is configured. Keep status synchronized with independently verified changes; do not infer wider release readiness from deployment or metadata updates.

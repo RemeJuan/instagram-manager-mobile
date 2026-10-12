@@ -360,6 +360,17 @@ class _ImportHomeScreenState extends State<ImportHomeScreen> {
     }
   }
 
+  Future<void> _openInfoLink(Uri uri) async {
+    try {
+      final opened = await widget.openProfile(uri);
+      if (mounted && !opened) {
+        setState(() => _notice = l.openInfoLinkFailed);
+      }
+    } on Object {
+      if (mounted) setState(() => _notice = l.openInfoLinkFailed);
+    }
+  }
+
   Future<void> _openPro() async {
     final gateway = widget.purchaseGateway;
     if (gateway == null) return;
@@ -465,6 +476,8 @@ class _ImportHomeScreenState extends State<ImportHomeScreen> {
                   ],
                   SizedBox(height: hasSavedAccounts ? 14 : 24),
                   _heroCard(preview, compact: hasSavedAccounts),
+                  const SizedBox(height: 12),
+                  _infoLinks(),
                 ] else ...[
                   Text(
                     l.savedAccounts,
@@ -475,6 +488,8 @@ class _ImportHomeScreenState extends State<ImportHomeScreen> {
                     l.savedAccountsIntro,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
+                  const SizedBox(height: 12),
+                  _infoLinks(),
                   if (!_fullLists && widget.purchaseGateway != null) ...[
                     const SizedBox(height: 18),
                     Container(
@@ -660,6 +675,29 @@ class _ImportHomeScreenState extends State<ImportHomeScreen> {
         Text(l.privacyDisclosure, key: const Key('privacy-copy')),
       ],
     ),
+  );
+
+  Widget _infoLinks() => Wrap(
+    spacing: 8,
+    runSpacing: 4,
+    children: [
+      TextButton.icon(
+        key: const Key('privacy-policy-link'),
+        onPressed: () => _openInfoLink(
+          Uri.https('remejuan.github.io', '/instagram-manager-mobile/privacy/'),
+        ),
+        icon: const Icon(Icons.privacy_tip_outlined, size: 18),
+        label: Text(l.privacyPolicy),
+      ),
+      TextButton.icon(
+        key: const Key('support-link'),
+        onPressed: () => _openInfoLink(
+          Uri.https('remejuan.github.io', '/instagram-manager-mobile/support/'),
+        ),
+        icon: const Icon(Icons.help_outline, size: 18),
+        label: Text(l.support),
+      ),
+    ],
   );
 
   Widget _heroCard(ParsedImport? preview, {required bool compact}) => Container(

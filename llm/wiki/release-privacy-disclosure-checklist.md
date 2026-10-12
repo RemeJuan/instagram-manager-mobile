@@ -11,5 +11,8 @@ Owner/reviewer checklist. Complete against release build and current Apple/Reven
 - [ ] Do not present optional RevenueCat Customer Center as available until implemented.
 - [ ] Complete legal owner, effective date, jurisdiction/children disclosures, privacy contact, and support contact. All owner placeholders must be resolved.
 - [ ] Owner validates factual accuracy; legal reviewer reviews applicable law and platform requirements.
-- [ ] Confirm proposed `https://kinship.click/privacy` and `/support` are live and controlled before linking or claiming they are hosted.
+- [x] Verify published `https://remejuan.github.io/instagram-manager-mobile/privacy/` and `https://remejuan.github.io/instagram-manager-mobile/support/`: workflow run `38224067074` succeeded; both live HTTPS URLs returned HTTP 200 and content was verified. This confirms availability only, not owner/legal approval or release-build accuracy.
+- [x] Independent GET-only `bundle exec fastlane ios metadata_readback` completed 10:34 Oct 12 2026: all 21 privacy/support/marketing URL fields match local root files across seven locales; non-URL fields match. Readback confirms store-field values, not release approval.
+- [ ] Confirm operator-supplied owner/contact details with owner/legal review before treating disclosures as final: Reme Le Hane, South Africa; `google@remej.dev`.
+- [ ] Treat any future custom domain as a separate owner-control and URL verification gate. Complete purchase, physical-device, and release-build privacy/data-flow validation before claiming release readiness.
 - [ ] Copyright may say © 2026 Kinship; confirm separately whether legal owner/entity requires a different attribution.

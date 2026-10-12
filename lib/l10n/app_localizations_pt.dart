@@ -86,6 +86,16 @@ class AppLocalizationsPt extends AppLocalizations {
   String get aboutResults => 'Sobre seus resultados';
 
   @override
+  String get privacyPolicy => 'Política de privacidade';
+
+  @override
+  String get support => 'Ajuda e contato';
+
+  @override
+  String get openInfoLinkFailed =>
+      'Não foi possível abrir o link. Tente novamente.';
+
+  @override
   String get snapshotCaveat =>
       'Uma exportação é um retrato, não um registro dos horários em que você seguiu ou deixou de seguir alguém. Os horários de exportação e importação não são horários de eventos. Lados ausentes ou parciais não podem comprovar ausência; um retrato não comprova bloqueio, mudança de nome ou exclusão.';
 
@@ -535,6 +545,16 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
 
   @override
   String get aboutResults => 'Sobre seus resultados';
+
+  @override
+  String get privacyPolicy => 'Política de privacidade';
+
+  @override
+  String get support => 'Ajuda e contato';
+
+  @override
+  String get openInfoLinkFailed =>
+      'Não foi possível abrir o link. Tente novamente.';
 
   @override
   String get snapshotCaveat =>

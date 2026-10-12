@@ -331,6 +331,11 @@ platform :ios do
       "support_url" => { kind: "version", getter: :support_url, attribute: :support_url },
       "marketing_url" => { kind: "version", getter: :marketing_url, attribute: :marketing_url }
     }
+    previous_urls = {
+      "privacy_url" => "https://kinship.click/privacy",
+      "support_url" => "https://kinship.click/support",
+      "marketing_url" => "https://kinship.click"
+    }
     expected_urls = url_fields.each_with_object({}) do |(filename, _definition), values|
       path = File.join(metadata_dir, "#{filename}.txt")
       value = File.file?(path) ? File.read(path).strip : ""
@@ -393,7 +398,8 @@ platform :ios do
         UI.user_error!("ASC URL completion model lacks expected URL field") unless model.respond_to?(definition.fetch(:getter))
         remote_value = model.public_send(definition.fetch(:getter)).to_s
         expected_value = expected_urls.fetch(filename)
-        UI.user_error!("ASC URL completion found conflicting remote URL metadata") unless remote_value.empty? || remote_value == expected_value
+        allowed_values = ["", expected_value, previous_urls.fetch(filename)]
+        UI.user_error!("ASC URL completion found unexpected remote URL metadata") unless allowed_values.include?(remote_value)
         existing_values[[locale, filename]] = remote_value
       end
     end
@@ -404,7 +410,7 @@ platform :ios do
         "support_url" => locate.call(version_localizations, locale),
         "marketing_url" => locate.call(version_localizations, locale)
       }.each do |filename, model|
-        next unless existing_values.fetch([locale, filename]).empty?
+        next if existing_values.fetch([locale, filename]) == expected_urls.fetch(filename)
 
         definition = url_fields.fetch(filename)
         begin

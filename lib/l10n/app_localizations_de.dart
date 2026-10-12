@@ -86,6 +86,16 @@ class AppLocalizationsDe extends AppLocalizations {
   String get aboutResults => 'Zu deinen Ergebnissen';
 
   @override
+  String get privacyPolicy => 'Datenschutzerklärung';
+
+  @override
+  String get support => 'Hilfe & Kontakt';
+
+  @override
+  String get openInfoLinkFailed =>
+      'Der Link konnte nicht geöffnet werden. Bitte versuche es erneut.';
+
+  @override
   String get snapshotCaveat =>
       'Ein Export ist eine Momentaufnahme, kein Nachweis für Zeitpunkte von Follow oder Unfollow. Export- und Importzeitpunkte sind keine Ereigniszeitpunkte. Fehlende oder unvollständige Seiten belegen keine Abwesenheit; eine Momentaufnahme beweist weder Blockieren noch Umbenennen oder Löschen.';
 
