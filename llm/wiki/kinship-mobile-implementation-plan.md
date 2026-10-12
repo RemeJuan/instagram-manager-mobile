@@ -38,7 +38,7 @@ There is **no meaningful implementation** in `libs/relationship-core/src/index.t
 
 Reference semantics to preserve:
 
-1. Follower JSON: top-level row array or supported `followers`, `followers_N` wrapper. Following JSON: `relationships_following` wrapper.
+1. Follower JSON: top-level row array or supported `followers`, `followers_N` wrapper. Following JSON: `relationships_following` wrapper. Ignore known unrelated Instagram relationship wrappers (`relationships_blocked_users`, `relationships_follow_requests_sent`, `relationships_unfollowed_users`) without treating them as evidence for either side; malformed supported wrappers and unknown same-side variants still fail validation.
 2. Detect sides from validated JSON structures, not file names. Combine split follower files.
 3. Normalize username by trimming, removing one optional leading `@`, validating length 1–30 and `[A-Za-z0-9._]+`, disallowing leading/trailing dot, canonicalizing lowercase while retaining display spelling.
 4. Following identity can come from value/title/valid Instagram href; if multiple exist, they must agree. Allow HTTPS Instagram hosts and supported profile or `/_u/` paths only; reject credentials, query, fragment, bad/reserved paths and spoofed hosts.

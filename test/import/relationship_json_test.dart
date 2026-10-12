@@ -307,6 +307,47 @@ void main() {
     }
   });
 
+  test(
+    'ignores allowlisted unrelated wrappers but rejects mixed and unknown',
+    () {
+      final parsed = parseRelationshipJson(
+        'following.json',
+        _bytes({
+          'relationships_following': [_row('valid')],
+          'relationships_blocked_users': [],
+          'relationships_follow_requests_sent': [],
+          'relationships_unfollowed_users': [],
+        }),
+      );
+      expect(parsed.records.single.identity, 'valid');
+      for (final wrapper in [
+        'relationships_following_v2',
+        'relationships_followers',
+      ]) {
+        expect(
+          () => parseRelationshipJson(
+            'following.json',
+            _bytes({
+              'relationships_following': [_row('valid')],
+              wrapper: [],
+            }),
+          ),
+          throwsA(isA<RelationshipJsonException>()),
+        );
+      }
+      expect(
+        () => parseRelationshipJson(
+          'following.json',
+          _bytes({
+            'relationships_following': 'malformed',
+            'relationships_blocked_users': [],
+          }),
+        ),
+        throwsA(isA<RelationshipJsonException>()),
+      );
+    },
+  );
+
   test('accepts exactly one million rows', () {
     final parsed = parseRelationshipJson(
       'x',

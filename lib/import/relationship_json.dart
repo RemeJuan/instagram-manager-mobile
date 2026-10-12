@@ -122,12 +122,21 @@ ParsedRelationshipFile parseRelationshipJson(
       .whereType<String>()
       .where((key) => RegExp(r'^followers_\d+$').hasMatch(key))
       .toList();
+  // Instagram exports include unrelated relationship wrappers alongside the
+  // supported follower/following files. Ignore only an explicit allowlist;
+  // unknown variants remain fail-closed.
+  const unrelatedWrappers = {
+    'relationships_blocked_users',
+    'relationships_follow_requests_sent',
+    'relationships_unfollowed_users',
+  };
   final unsupportedWrapperKeys = decoded.keys
       .whereType<String>()
       .where(
         (key) =>
             key.startsWith('relationships_') &&
-                key != 'relationships_following' ||
+                key != 'relationships_following' &&
+                !unrelatedWrappers.contains(key) ||
             RegExp(r'^followers(?:_.*)?$').hasMatch(key) &&
                 key != 'followers' &&
                 !RegExp(r'^followers_\d+$').hasMatch(key),
@@ -147,6 +156,15 @@ ParsedRelationshipFile parseRelationshipJson(
     throw RelationshipJsonException(
       'Ambiguous relationship JSON wrappers.',
       RelationshipJsonErrorCode.ambiguousWrappers,
+    );
+  }
+  if (kinds == 0 &&
+      decoded.keys.every(
+        (key) => key is String && unrelatedWrappers.contains(key),
+      )) {
+    throw RelationshipJsonException(
+      'Unrecognized relationship JSON structure.',
+      RelationshipJsonErrorCode.unrecognizedStructure,
     );
   }
   if (hasFollowing) {

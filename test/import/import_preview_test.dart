@@ -150,6 +150,70 @@ void main() {
     },
   );
 
+  test('preview accepts valid sides with unrelated ZIP wrappers, rejects malformed supported', () async {
+    final zip = File('${root.path}/unrelated_wrappers.zip')
+      ..writeAsBytesSync(
+        _storedZipEntries([
+          _ZipEntry(
+            'relationships_following.json',
+            utf8.encode(
+              jsonEncode({
+                'relationships_following': [_row('following', 1)],
+                'relationships_blocked_users': [],
+                'relationships_follow_requests_sent': [],
+                'relationships_unfollowed_users': [],
+              }),
+            ),
+          ),
+          _ZipEntry(
+            'followers_1.json',
+            utf8.encode(
+              jsonEncode({
+                'followers': [_row('follower', 2)],
+                'relationships_blocked_users': [],
+              }),
+            ),
+          ),
+        ]),
+      );
+    final preview = await parseImportInputs([zip.path]);
+    expect(
+      preview.sides[RelationshipSide.following]!.observations,
+      hasLength(1),
+    );
+    expect(
+      preview.sides[RelationshipSide.followers]!.observations,
+      hasLength(1),
+    );
+
+    final malformed = File('${root.path}/malformed_supported.zip')
+      ..writeAsBytesSync(
+        _storedZipEntries([
+          _ZipEntry(
+            'relationships_following.json',
+            utf8.encode(
+              jsonEncode({
+                'relationships_following': 'not-a-list',
+                'relationships_blocked_users': [],
+              }),
+            ),
+          ),
+          _ZipEntry(
+            'followers_1.json',
+            utf8.encode(
+              jsonEncode({
+                'followers': [_row('follower', 2)],
+              }),
+            ),
+          ),
+        ]),
+      );
+    await expectLater(
+      parseImportInputs([malformed.path]),
+      throwsA(isA<ImportException>()),
+    );
+  });
+
   test(
     'directory-inclusive count across archives accepts 500 and rejects 501',
     () async {
