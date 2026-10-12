@@ -1,0 +1,90 @@
+---
+permalink: privacy/index.html
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="theme-color" content="#f5f1e9">
+    <meta name="description" content="How Kinship handles Instagram exports, local history, purchases, backups, and privacy questions.">
+    <title>Privacy — Kinship</title>
+    <link rel="stylesheet" href="../assets/styles/site.css">
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <div class="site-shell" id="top">
+      <header class="site-header">
+        <a class="wordmark" href="../" aria-label="Kinship home">
+          <span class="brand-mark" aria-hidden="true"><span></span><span></span></span>
+          <span>kinship<span class="wordmark-period">.</span></span>
+        </a>
+        <span class="header-status"><span class="status-light" aria-hidden="true"></span> In development</span>
+      </header>
+
+      <main id="main" class="info-main">
+        <header class="info-hero">
+          <div>
+            <p class="eyebrow"><span class="eyebrow-line" aria-hidden="true"></span> The details that matter</p>
+            <h1>Privacy, <em>plainly.</em></h1>
+          </div>
+          <div class="info-hero-aside">
+            <span class="info-emblem" aria-hidden="true">✳</span>
+            <p>Kinship is in development. This page describes its current approach to your data and purchase services.</p>
+            <p class="info-date">Published <time datetime="2026-10-12">October 12, 2026</time></p>
+          </div>
+        </header>
+
+        <div class="info-layout">
+          <nav class="info-toc" aria-label="On this page">
+            <p>On this page</p>
+            <a href="#exports">Your export</a>
+            <a href="#purchases">Purchases</a>
+            <a href="#storage">Storage &amp; deletion</a>
+            <a href="#contact">Contact &amp; updates</a>
+          </nav>
+          <div class="info-content">
+            <section id="exports" aria-labelledby="exports-title">
+              <span class="info-number" aria-hidden="true">01 / 04</span>
+              <h2 id="exports-title">Your export is processed locally.</h2>
+              <p>You choose an official Instagram data export to import. Kinship parses supported export data locally and saves relationship history in a SQLite database on your device. Export files can contain usernames and other account information.</p>
+              <p>Kinship does not ask for Instagram credentials, log in to Instagram, or scrape its service. Kinship does not upload your export contents, usernames, or relationship lists to a Kinship service or to RevenueCat. Temporary copies made for an import are removed after the import workflow ends.</p>
+            </section>
+
+            <section id="purchases" aria-labelledby="purchases-title">
+              <span class="info-number" aria-hidden="true">02 / 04</span>
+              <h2 id="purchases-title">Purchases are separate.</h2>
+              <p>Apple handles App Store payments. Kinship uses RevenueCat to check purchases and access to paid features. RevenueCat processes purchase and entitlement information using an anonymous SDK identifier. Its service may also process network and device or app information needed for purchase checks. Kinship does not send your Instagram export or relationship lists to Apple or RevenueCat for this purpose.</p>
+              <p>Apple and RevenueCat handle their own purchase-related records under their respective privacy practices. Read <a href="https://www.apple.com/legal/privacy/">Apple's privacy policy</a> and <a href="https://www.revenuecat.com/privacy">RevenueCat's privacy policy</a> for how they handle that data. Kinship does not control those records.</p>
+            </section>
+
+            <section id="storage" aria-labelledby="storage-title">
+              <span class="info-number" aria-hidden="true">03 / 04</span>
+              <h2 id="storage-title">Storage has boundaries.</h2>
+              <p>Imported relationship history is stored in the app on your device. Depending on your settings, iOS or computer backups may contain app data. Kinship does not provide its own hosted relationship-history storage.</p>
+              <p>Deleting the app removes its on-device history, but existing backups may still hold copies. Apple and RevenueCat may retain purchase or transaction records separately. For questions about your data or deletion, <a href="mailto:google@remej.dev">contact us</a>; do not send an export or relationship list by email.</p>
+            </section>
+
+            <section id="contact" aria-labelledby="contact-title">
+              <span class="info-number" aria-hidden="true">04 / 04</span>
+              <h2 id="contact-title">Questions are welcome.</h2>
+              <p>Kinship is operated by Reme Le Hane in South Africa. For privacy questions or requests, email <a href="mailto:google@remej.dev">google@remej.dev</a>. If you contact us, we use your message to respond. You can use the same address to ask about access to or deletion of your correspondence; some records may need to be retained for legal reasons. Please leave out passwords, export files, usernames, and relationship lists.</p>
+              <p>As the app changes, this page may change too. Its publication date appears above.</p>
+            </section>
+          </div>
+        </div>
+      </main>
+
+      <footer class="site-footer">
+        <span class="footer-brand">kinship<span>.</span></span>
+        <p>Independent project. Not affiliated with Instagram or Meta.</p>
+        <nav class="footer-links" aria-label="Footer">
+          <a href="../">Home</a>
+          <a href="../privacy/" aria-current="page">Privacy</a>
+          <a href="../support/">Support</a>
+        </nav>
+      </footer>
+    </div>
+  </body>
+</html>
