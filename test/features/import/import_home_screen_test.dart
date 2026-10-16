@@ -37,6 +37,8 @@ class _FakeGateway extends PurchaseGateway {
   @override
   Future<bool> initialize() async => true;
   @override
+  Future<LifetimeOffer?> lifetimeOffer() async => null;
+  @override
   Future<void> dispose() => changes.close();
 }
 
@@ -100,6 +102,7 @@ void main() {
     Locale? locale,
     bool failLinks = false,
     bool throwOnLinks = false,
+    bool withoutPurchaseGateway = false,
   }) => MaterialApp(
     theme: KinshipTheme.light,
     locale: locale,
@@ -126,7 +129,7 @@ void main() {
         if (failLinks) return false;
         return true;
       },
-      purchaseGateway: gateway,
+      purchaseGateway: withoutPurchaseGateway ? null : gateway,
     ),
   );
 
@@ -137,6 +140,8 @@ void main() {
         name.startsWith('profile-') ||
         name.startsWith('details-') ||
         name == 'results-count' ||
+        name == 'sample-upgrade' ||
+        name == 'sample-open-pro' ||
         name == 'next-page' ||
         name == 'previous-page' ||
         name == 'search-field';
@@ -574,11 +579,14 @@ void main() {
       expect(find.byKey(const Key('category-all')), findsNothing);
       expect(find.byKey(const Key('next-page')), findsNothing);
       expect(find.byKey(const Key('details-sample_00')), findsNothing);
-      await tester.drag(find.byType(ListView).first, const Offset(0, 1200));
-      await tester.pumpAndSettle();
-      expect(find.byKey(const Key('sample-upgrade')), findsNothing);
+      await show(tester, const Key('sample-upgrade'));
+      expect(find.textContaining('Pro status could not be verified'), findsOneWidget);
+      expect(find.byKey(const Key('sample-open-pro')), findsOneWidget);
       gateway.update(EntitlementState.inactive);
       await tester.pumpAndSettle();
+      await show(tester, const Key('sample-upgrade'));
+      expect(find.textContaining('first 10 usernames'), findsOneWidget);
+      expect(find.byKey(const Key('sample-open-pro')), findsOneWidget);
       await show(tester, const Key('results-count'));
       expect(
         find.text('Showing first 10 of 35 in this category'),
@@ -586,12 +594,16 @@ void main() {
       );
       gateway.update(EntitlementState.active);
       await tester.pumpAndSettle();
+      expect(find.byKey(const Key('sample-upgrade')), findsNothing);
+      expect(find.byKey(const Key('sample-open-pro')), findsNothing);
       await show(tester, const Key('search-field'));
       expect(find.byKey(const Key('category-all')), findsOneWidget);
       await show(tester, const Key('results-count'));
       expect(find.text('Showing 1–30 of 35'), findsOneWidget);
       gateway.update(EntitlementState.unknown);
       await tester.pumpAndSettle();
+      await show(tester, const Key('sample-upgrade'));
+      expect(find.textContaining('Pro status could not be verified'), findsOneWidget);
       await show(tester, const Key('category-unknown'));
       await tapWithIo(tester, const Key('category-unknown'));
       await show(tester, const Key('results-count'));
@@ -602,6 +614,27 @@ void main() {
       expect(find.byKey(const Key('search-field')), findsNothing);
     },
   );
+
+  testWidgets('sample upgrade opens Pro; missing gateway shows limitation without CTA', (
+    tester,
+  ) async {
+    gateway.snapshot = const PurchaseSnapshot(EntitlementState.inactive);
+    await tester.pumpWidget(buildScreen());
+    await tester.pumpAndSettle();
+    await show(tester, const Key('sample-open-pro'));
+    await tester.tap(find.byKey(const Key('sample-open-pro')));
+    await tester.pumpAndSettle();
+    expect(find.text('Kinship Pro'), findsWidgets);
+    expect(find.byKey(const Key('pro-status')), findsOneWidget);
+
+    await tester.pumpWidget(const SizedBox());
+    await tester.pumpWidget(buildScreen(withoutPurchaseGateway: true));
+    await tester.pumpAndSettle();
+    await show(tester, const Key('sample-upgrade'));
+    expect(find.textContaining('Pro status could not be verified'), findsOneWidget);
+    expect(find.byKey(const Key('sample-open-pro')), findsNothing);
+    expect(find.byKey(const Key('open-pro')), findsNothing);
+  });
 
   testWidgets('late initial status cannot replace newer Pro update', (
     tester,

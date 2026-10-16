@@ -480,39 +480,41 @@ class _ImportHomeScreenState extends State<ImportHomeScreen> {
                     l.savedAccountsIntro,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  // if (!_fullLists && widget.purchaseGateway != null) ...[
-                  //   const SizedBox(height: 18),
-                  //   Container(
-                  //     key: const Key('sample-upgrade'),
-                  //     padding: const EdgeInsets.all(16),
-                  //     decoration: BoxDecoration(
-                  //       color: KinshipColors.mint,
-                  //       borderRadius: BorderRadius.circular(12),
-                  //     ),
-                  //     child: Column(
-                  //       crossAxisAlignment: CrossAxisAlignment.start,
-                  //       children: [
-                  //         Text(
-                  //           l.sampleHeading,
-                  //           style: Theme.of(context).textTheme.titleMedium,
-                  //         ),
-                  //         const SizedBox(height: 4),
-                  //         Text(
-                  //           _entitlement.state == EntitlementState.unknown
-                  //               ? l.sampleUnknown
-                  //               : l.sampleDescription,
-                  //         ),
-                  //         const SizedBox(height: 10),
-                  //         TextButton.icon(
-                  //           key: const Key('sample-open-pro'),
-                  //           onPressed: _openPro,
-                  //           icon: const Icon(Icons.auto_awesome_outlined),
-                  //           label: Text(l.sampleUnlock),
-                  //         ),
-                  //       ],
-                  //     ),
-                  //   ),
-                  // ],
+                  if (!_entitlement.isPro) ...[
+                    const SizedBox(height: 18),
+                    Container(
+                      key: const Key('sample-upgrade'),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: KinshipColors.mint,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            l.sampleHeading,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _entitlement.state == EntitlementState.unknown
+                                ? l.sampleUnknown
+                                : l.sampleDescription,
+                          ),
+                          if (widget.purchaseGateway != null) ...[
+                            const SizedBox(height: 10),
+                            TextButton.icon(
+                              key: const Key('sample-open-pro'),
+                              onPressed: _openPro,
+                              icon: const Icon(Icons.auto_awesome_outlined),
+                              label: Text(l.sampleUnlock),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
                 if (_busy || _loadingRows) ...[
                   const SizedBox(height: 12),
