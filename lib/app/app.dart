@@ -12,6 +12,7 @@ class KinshipApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => MaterialApp(
+    debugShowCheckedModeBanner: false,
     onGenerateTitle: (context) => AppLocalizations.of(context)!.appName,
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: const [
