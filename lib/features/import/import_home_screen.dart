@@ -470,8 +470,6 @@ class _ImportHomeScreenState extends State<ImportHomeScreen> {
                   ],
                   SizedBox(height: hasSavedAccounts ? 14 : 24),
                   _heroCard(preview, compact: hasSavedAccounts),
-                  const SizedBox(height: 12),
-                  _infoLinks(),
                 ] else ...[
                   Text(
                     l.savedAccounts,
@@ -482,41 +480,39 @@ class _ImportHomeScreenState extends State<ImportHomeScreen> {
                     l.savedAccountsIntro,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
-                  const SizedBox(height: 12),
-                  _infoLinks(),
-                  if (!_fullLists && widget.purchaseGateway != null) ...[
-                    const SizedBox(height: 18),
-                    Container(
-                      key: const Key('sample-upgrade'),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: KinshipColors.mint,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            l.sampleHeading,
-                            style: Theme.of(context).textTheme.titleMedium,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _entitlement.state == EntitlementState.unknown
-                                ? l.sampleUnknown
-                                : l.sampleDescription,
-                          ),
-                          const SizedBox(height: 10),
-                          TextButton.icon(
-                            key: const Key('sample-open-pro'),
-                            onPressed: _openPro,
-                            icon: const Icon(Icons.auto_awesome_outlined),
-                            label: Text(l.sampleUnlock),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                  // if (!_fullLists && widget.purchaseGateway != null) ...[
+                  //   const SizedBox(height: 18),
+                  //   Container(
+                  //     key: const Key('sample-upgrade'),
+                  //     padding: const EdgeInsets.all(16),
+                  //     decoration: BoxDecoration(
+                  //       color: KinshipColors.mint,
+                  //       borderRadius: BorderRadius.circular(12),
+                  //     ),
+                  //     child: Column(
+                  //       crossAxisAlignment: CrossAxisAlignment.start,
+                  //       children: [
+                  //         Text(
+                  //           l.sampleHeading,
+                  //           style: Theme.of(context).textTheme.titleMedium,
+                  //         ),
+                  //         const SizedBox(height: 4),
+                  //         Text(
+                  //           _entitlement.state == EntitlementState.unknown
+                  //               ? l.sampleUnknown
+                  //               : l.sampleDescription,
+                  //         ),
+                  //         const SizedBox(height: 10),
+                  //         TextButton.icon(
+                  //           key: const Key('sample-open-pro'),
+                  //           onPressed: _openPro,
+                  //           icon: const Icon(Icons.auto_awesome_outlined),
+                  //           label: Text(l.sampleUnlock),
+                  //         ),
+                  //       ],
+                  //     ),
+                  //   ),
+                  // ],
                 ],
                 if (_busy || _loadingRows) ...[
                   const SizedBox(height: 12),
@@ -647,6 +643,8 @@ class _ImportHomeScreenState extends State<ImportHomeScreen> {
                 ],
                 const SizedBox(height: 28),
                 _aboutResults(),
+                const SizedBox(height: 20),
+                _infoLinks(),
               ],
             ),
           ),
@@ -671,27 +669,41 @@ class _ImportHomeScreenState extends State<ImportHomeScreen> {
     ),
   );
 
-  Widget _infoLinks() => Wrap(
-    spacing: 8,
-    runSpacing: 4,
-    children: [
-      TextButton.icon(
-        key: const Key('privacy-policy-link'),
-        onPressed: () => _openInfoLink(
-          Uri.https('remejuan.github.io', '/instagram-manager-mobile/privacy/'),
+  Widget _infoLinks() => Container(
+    key: const Key('info-footer'),
+    padding: const EdgeInsets.only(top: 12),
+    decoration: const BoxDecoration(
+      border: Border(top: BorderSide(color: KinshipColors.line)),
+    ),
+    child: Wrap(
+      alignment: WrapAlignment.center,
+      spacing: 8,
+      runSpacing: 4,
+      children: [
+        TextButton.icon(
+          key: const Key('privacy-policy-link'),
+          onPressed: () => _openInfoLink(
+            Uri.https(
+              'remejuan.github.io',
+              '/instagram-manager-mobile/privacy/',
+            ),
+          ),
+          icon: const Icon(Icons.privacy_tip_outlined, size: 18),
+          label: Text(l.privacyPolicy),
         ),
-        icon: const Icon(Icons.privacy_tip_outlined, size: 18),
-        label: Text(l.privacyPolicy),
-      ),
-      TextButton.icon(
-        key: const Key('support-link'),
-        onPressed: () => _openInfoLink(
-          Uri.https('remejuan.github.io', '/instagram-manager-mobile/support/'),
+        TextButton.icon(
+          key: const Key('support-link'),
+          onPressed: () => _openInfoLink(
+            Uri.https(
+              'remejuan.github.io',
+              '/instagram-manager-mobile/support/',
+            ),
+          ),
+          icon: const Icon(Icons.help_outline, size: 18),
+          label: Text(l.support),
         ),
-        icon: const Icon(Icons.help_outline, size: 18),
-        label: Text(l.support),
-      ),
-    ],
+      ],
+    ),
   );
 
   Widget _heroCard(ParsedImport? preview, {required bool compact}) => Container(

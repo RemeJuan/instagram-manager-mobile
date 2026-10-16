@@ -192,10 +192,24 @@ void main() {
   }
 
   testWidgets(
-    'privacy and support links open on both tabs without expanding About',
+    'privacy and support live below About on both tabs and open without expanding it',
     (tester) async {
       await tester.pumpWidget(buildScreen());
       expect(find.byKey(const Key('privacy-copy')), findsNothing);
+      await show(tester, const Key('info-footer'));
+      expect(
+        tester.getTopLeft(find.byKey(const Key('info-footer'))).dy,
+        greaterThan(
+          tester.getBottomLeft(find.byKey(const Key('about-results'))).dy,
+        ),
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('info-footer')),
+          matching: find.byKey(const Key('privacy-policy-link')),
+        ),
+        findsOneWidget,
+      );
       await tester.tap(find.byKey(const Key('privacy-policy-link')));
       await tester.pump();
       expect(
@@ -204,6 +218,13 @@ void main() {
       );
       await tester.tap(find.byKey(const Key('nav-accounts')));
       await tester.pumpAndSettle();
+      await show(tester, const Key('info-footer'));
+      expect(
+        tester.getTopLeft(find.byKey(const Key('info-footer'))).dy,
+        greaterThan(
+          tester.getBottomLeft(find.byKey(const Key('about-results'))).dy,
+        ),
+      );
       await tester.tap(find.byKey(const Key('support-link')));
       await tester.pump();
       expect(
@@ -215,8 +236,10 @@ void main() {
 
   testWidgets('external link failures show localized notice', (tester) async {
     await tester.pumpWidget(buildScreen(failLinks: true));
+    await show(tester, const Key('privacy-policy-link'));
     await tester.tap(find.byKey(const Key('privacy-policy-link')));
     await tester.pump();
+    await show(tester, const Key('import-notice'));
     expect(
       find.text('Could not open the link. Please try again.'),
       findsOneWidget,
@@ -225,8 +248,10 @@ void main() {
       buildScreen(throwOnLinks: true, locale: const Locale('en', 'GB')),
     );
     await tester.pumpAndSettle();
+    await show(tester, const Key('support-link'));
     await tester.tap(find.byKey(const Key('support-link')));
     await tester.pump();
+    await show(tester, const Key('import-notice'));
     expect(
       find.text('Could not open the link. Please try again.'),
       findsOneWidget,
@@ -551,8 +576,7 @@ void main() {
       expect(find.byKey(const Key('details-sample_00')), findsNothing);
       await tester.drag(find.byType(ListView).first, const Offset(0, 1200));
       await tester.pumpAndSettle();
-      expect(find.byKey(const Key('sample-upgrade')), findsOneWidget);
-      expect(find.textContaining('could not be verified'), findsOneWidget);
+      expect(find.byKey(const Key('sample-upgrade')), findsNothing);
       gateway.update(EntitlementState.inactive);
       await tester.pumpAndSettle();
       await show(tester, const Key('results-count'));
@@ -813,6 +837,11 @@ void main() {
     await tester.pumpAndSettle();
     await toggleAbout(tester);
     expect(find.textContaining('device backup'), findsOneWidget);
+    await show(tester, const Key('info-footer'));
+    expect(find.byKey(const Key('privacy-policy-link')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('support-link')));
+    await tester.pump();
+    expect(opened.last.path, '/instagram-manager-mobile/support/');
     expect(tester.takeException(), isNull);
   });
 
