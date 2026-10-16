@@ -1,62 +1,158 @@
 locale: fr-FR
+name: "Kinship"
 screenshots:
-  - asset: calculator_free
-    heading:
-      - text: "Calculez"
-        style: accent
-      - text: " le vrai coût"
-        style: primary
-
-  - asset: batch_quotes
-    heading:
-      - text: "Chiffrez"
-        style: accent
-      - text: " vos lots"
-        style: primary
-
-  - asset: materials
-    heading:
-      - text: "Suivez"
-        style: accent
-      - text: " vos matériaux"
-        style: primary
-
-  - asset: gcode_import
-    heading:
-      - text: "Importez"
-        style: accent
-      - text: " le G-Code"
-        style: primary
-
-  - asset: history_export
-    heading:
-      - text: "Enregistrez"
-        style: accent
-      - text: " l'historique"
-        style: primary
-
-  - asset: settings_free
-    heading:
-      - text: "Définissez"
-        style: accent
-      - text: " vos valeurs par défaut"
-        style: primary
-
-  - asset: calculator_pro
-    heading:
-      - text: "Débloquez"
-        style: accent
-      - text: " les tarifs avancés"
-        style: primary
-
-  - asset: settings_pro
+  - asset: connections_overview
     heading:
       - line:
-          - text: "Pas de comptes."
-            style: accent
-      - line:
-          - text: "Pas de cloud."
+          - text: "Vos relations,"
             style: primary
       - line:
-          - text: "Ça fonctionne."
-            style: accent
+          - text: "en contexte."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Une vue plus claire sur vos abonnés"
+            style: primary
+      - line:
+          - text: "et vos abonnements."
+            style: primary
+  - asset: safe_import
+    heading:
+      - line:
+          - text: "Choisissez l’export."
+            style: primary
+      - line:
+          - text: "Sans vous connecter."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Utilisez l’export officiel d’Instagram."
+            style: primary
+      - line:
+          - text: "Aucun mot de passe nécessaire."
+            style: primary
+  - asset: mutual_accounts
+    heading:
+      - line:
+          - text: "Découvrez qui"
+            style: primary
+      - line:
+          - text: "vous suit en retour."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Explorez les profils communs"
+            style: primary
+      - line:
+          - text: "à vos abonnés et abonnements."
+            style: primary
+  - asset: snapshot_context
+    heading:
+      - line:
+          - text: "Gardez une trace."
+            style: primary
+      - line:
+          - text: "Gardez le contexte."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Comparez vos instantanés,"
+            style: primary
+      - line:
+          - text: "sans conclusions hâtives."
+            style: primary
+  - asset: local_privacy
+    heading:
+      - line:
+          - text: "Vos données."
+            style: primary
+      - line:
+          - text: "Votre appareil."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Traitées localement, sans"
+            style: primary
+      - line:
+          - text: "connecter votre compte."
+            style: primary
+  - asset: ipad_connections_overview
+    format: ipad
+    heading:
+      - line:
+          - text: "Vos relations,"
+            style: primary
+      - line:
+          - text: "en contexte."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Une vue plus claire sur vos abonnés"
+            style: primary
+      - line:
+          - text: "et vos abonnements."
+            style: primary
+  - asset: ipad_safe_import
+    format: ipad
+    heading:
+      - line:
+          - text: "Choisissez l’export."
+            style: primary
+      - line:
+          - text: "Sans vous connecter."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Utilisez l’export officiel d’Instagram."
+            style: primary
+      - line:
+          - text: "Aucun mot de passe nécessaire."
+            style: primary
+  - asset: ipad_mutual_accounts
+    format: ipad
+    heading:
+      - line:
+          - text: "Découvrez qui"
+            style: primary
+      - line:
+          - text: "vous suit en retour."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Explorez les profils communs"
+            style: primary
+      - line:
+          - text: "à vos abonnés et abonnements."
+            style: primary
+  - asset: ipad_snapshot_context
+    format: ipad
+    heading:
+      - line:
+          - text: "Gardez une trace."
+            style: primary
+      - line:
+          - text: "Gardez le contexte."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Comparez vos instantanés,"
+            style: primary
+      - line:
+          - text: "sans conclusions hâtives."
+            style: primary
+  - asset: ipad_local_privacy
+    format: ipad
+    heading:
+      - line:
+          - text: "Vos données."
+            style: primary
+      - line:
+          - text: "Votre appareil."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Traitées localement, sans"
+            style: primary
+      - line:
+          - text: "connecter votre compte."
+            style: primary

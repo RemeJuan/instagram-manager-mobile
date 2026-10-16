@@ -1,232 +1,131 @@
 ---
-# Per-format per-asset layout metadata for screenshot text overlays.
-# Each asset defines a fixed text box. Text wraps inside the box and
-# fit_mode: shrink_to_fit reduces font size when the content exceeds the box.
+# *_base.jpg are clean 3618 x 7866 iOS artwork. Numbered .jpg files retain
+# baked text for comparison only. Zones use 920px-wide reference coordinates;
+# renderer scales them to native pixels. Heading above lime rule, subtitle below.
+heading_zone: &heading_zone
+  x: 70
+  y: 167
+  max_width: 780
+  max_height: 160
+  font_size: 68
+  min_font_size: 60
+  line_height: 76
+  max_lines: 2
+  align: left
+  wrap: true
+  fit_mode: shrink_to_fit
+  font: assets/fonts/Manrope-Variable.ttf
+  font_weight: 700
+  colors:
+    primary: '#080808'
+    accent: '#080808'
+subtitle_zone: &subtitle_zone
+  x: 79
+  y: 378
+  max_width: 760
+  max_height: 70
+  font_size: 28
+  min_font_size: 25
+  absolute_min_font_size: 25
+  line_height: 31
+  max_lines: 2
+  align: left
+  wrap: true
+  fit_mode: shrink_to_fit
+  font: assets/fonts/DMSans-Variable.ttf
+  font_weight: 400
+  colors:
+    primary: '#49575a'
+    accent: '#49575a'
 formats:
   ios:
-    assets: &ios_assets
-      batch_quotes:
-        source: batch_quotes.jpg
-        x: 185
-        y: 179
-        max_width: 910
-        max_height: 260
-        font_size: 104
-        min_font_size: 68
-        line_height: 116
-        max_lines: 2
-        align: center
-        wrap: true
-        fit_mode: shrink_to_fit
-
-      calculator_free:
-        source: calculator_free.jpg
-        x: 161
-        y: 160
-        max_width: 960
-        max_height: 260
-        font_size: 106
-        min_font_size: 68
-        line_height: 116
-        max_lines: 2
-        align: center
-        wrap: true
-        fit_mode: shrink_to_fit
-
-      calculator_pro:
-        source: calculator_pro.jpg
-        x: 225
-        y: 160
-        max_width: 830
-        max_height: 260
-        font_size: 104
-        min_font_size: 68
-        line_height: 116
-        max_lines: 2
-        align: center
-        wrap: true
-        fit_mode: shrink_to_fit
-
-      gcode_import:
-        source: gcode_import.jpg
-        x: 319
-        y: 160
-        max_width: 638
-        max_height: 260
-        font_size: 106
-        min_font_size: 68
-        line_height: 116
-        max_lines: 2
-        align: center
-        wrap: true
-        fit_mode: shrink_to_fit
-
-      history_export:
-        source: history_export.jpg
-        x: 164
-        y: 158
-        max_width: 930
-        max_height: 260
-        font_size: 106
-        min_font_size: 68
-        line_height: 116
-        max_lines: 2
-        align: center
-        wrap: true
-        fit_mode: shrink_to_fit
-
-      materials:
-        source: materials.jpg
-        x: 120
-        y: 107
-        max_width: 1045
-        max_height: 270
-        font_size: 96
-        min_font_size: 64
-        line_height: 148
-        max_lines: 2
-        align: center
-        wrap: true
-        fit_mode: shrink_to_fit
-
-      settings_free:
-        source: settings_free.jpg
-        x: 322
-        y: 160
-        max_width: 640
-        max_height: 260
-        font_size: 104
-        min_font_size: 68
-        line_height: 116
-        max_lines: 2
-        align: center
-        wrap: true
-        fit_mode: shrink_to_fit
-
-      settings_pro:
-        source: settings_pro.jpg
-        x: 307
-        y: 28
-        max_width: 660
-        max_height: 360
-        font_size: 96
-        min_font_size: 60
-        line_height: 146
-        max_lines: 3
-        align: center
-        wrap: true
-        fit_mode: shrink_to_fit
-
-  android:
+    design_width: 920
+    target_size: [1206, 2622]
     assets:
-      batch_quotes:
-        source: batch_quotes.jpg
-        x: 185
-        y: 179
-        max_width: 910
-        max_height: 260
-        font_size: 104
-        min_font_size: 68
-        line_height: 116
-        max_lines: 2
-        align: center
-        wrap: true
-        fit_mode: shrink_to_fit
-
-      calculator_free:
-        source: calculator_free.jpg
-        x: 161
-        y: 160
-        max_width: 960
-        max_height: 260
-        font_size: 106
-        min_font_size: 68
-        line_height: 116
-        max_lines: 2
-        align: center
-        wrap: true
-        fit_mode: shrink_to_fit
-
-      calculator_pro:
-        source: calculator_pro.jpg
-        x: 225
-        y: 160
-        max_width: 830
-        max_height: 260
-        font_size: 104
-        min_font_size: 68
-        line_height: 116
-        max_lines: 2
-        align: center
-        wrap: true
-        fit_mode: shrink_to_fit
-
-      gcode_import:
-        source: gcode_import.jpg
-        x: 319
-        y: 160
-        max_width: 638
-        max_height: 260
-        font_size: 106
-        min_font_size: 68
-        line_height: 116
-        max_lines: 2
-        align: center
-        wrap: true
-        fit_mode: shrink_to_fit
-
-      history_export:
-        source: history_export.jpg
-        x: 164
-        y: 158
-        max_width: 930
-        max_height: 260
-        font_size: 106
-        min_font_size: 68
-        line_height: 116
-        max_lines: 2
-        align: center
-        wrap: true
-        fit_mode: shrink_to_fit
-
-      materials:
-        source: materials.jpg
-        x: 120
-        y: 107
-        max_width: 1045
-        max_height: 270
-        font_size: 96
-        min_font_size: 64
-        line_height: 148
-        max_lines: 2
-        align: center
-        wrap: true
-        fit_mode: shrink_to_fit
-
-      settings_free:
-        source: settings_free.jpg
-        x: 322
-        y: 160
-        max_width: 640
-        max_height: 260
-        font_size: 104
-        min_font_size: 68
-        line_height: 116
-        max_lines: 2
-        align: center
-        wrap: true
-        fit_mode: shrink_to_fit
-
-      settings_pro:
-        source: settings_pro.jpg
-        x: 307
-        y: 28
-        max_width: 660
-        max_height: 360
-        font_size: 96
-        min_font_size: 60
-        line_height: 146
-        max_lines: 3
-        align: center
-        wrap: true
-        fit_mode: shrink_to_fit
+      connections_overview:
+        source: 01_base.jpg
+        output: 01.png
+        heading: *heading_zone
+        subtitle: *subtitle_zone
+      safe_import:
+        source: 02_base.jpg
+        output: 02.png
+        heading: *heading_zone
+        subtitle: *subtitle_zone
+      mutual_accounts:
+        source: 03_base.jpg
+        output: 03.png
+        heading: *heading_zone
+        subtitle: *subtitle_zone
+      snapshot_context:
+        source: 04_base.jpg
+        output: 04.png
+        heading: *heading_zone
+        subtitle: *subtitle_zone
+      local_privacy:
+        source: 05_base.jpg
+        output: 05.png
+        heading: *heading_zone
+        subtitle: *subtitle_zone
+  ipad:
+    # Native 2064 x 2752 artwork; coordinates are source pixels, not phone units.
+    design_width: 2064
+    target_size: [2064, 2752]
+    assets:
+      ipad_connections_overview:
+        source: 06_base.png
+        output: 01.png
+        heading: &ipad_heading_zone
+          x: 160
+          y: 330
+          max_width: 1500
+          max_height: 220
+          font_size: 96
+          min_font_size: 80
+          line_height: 106
+          max_lines: 2
+          align: left
+          wrap: true
+          fit_mode: shrink_to_fit
+          font: assets/fonts/Manrope-Variable.ttf
+          font_weight: 700
+          colors:
+            primary: '#080808'
+            accent: '#080808'
+        subtitle: &ipad_subtitle_zone
+          x: 175
+          y: 605
+          max_width: 1500
+          max_height: 120
+          font_size: 44
+          min_font_size: 38
+          line_height: 56
+          max_lines: 2
+          align: left
+          wrap: true
+          fit_mode: shrink_to_fit
+          font: assets/fonts/DMSans-Variable.ttf
+          font_weight: 400
+          colors:
+            primary: '#49575a'
+            accent: '#49575a'
+      ipad_safe_import:
+        source: 10_base.png
+        output: 02.png
+        heading: *ipad_heading_zone
+        subtitle: *ipad_subtitle_zone
+      ipad_mutual_accounts:
+        source: 08_base.png
+        output: 03.png
+        heading: *ipad_heading_zone
+        subtitle: *ipad_subtitle_zone
+      ipad_snapshot_context:
+        source: 09_base.png
+        output: 04.png
+        heading: *ipad_heading_zone
+        subtitle: *ipad_subtitle_zone
+      ipad_local_privacy:
+        source: 07_base.png
+        output: 05.png
+        heading: *ipad_heading_zone
+        subtitle: *ipad_subtitle_zone

@@ -30,5 +30,6 @@ private-exports/
 .env.*
 /fastlane/metadata/ios/review_information/
 /fastlane/report.xml
+/fastlane/screenshots/output/
 .DS_Store
 __pycache__/

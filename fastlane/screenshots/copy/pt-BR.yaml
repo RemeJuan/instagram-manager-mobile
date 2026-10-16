@@ -1,62 +1,158 @@
 locale: pt-BR
+name: "Kinship"
 screenshots:
-  - asset: calculator_free
-    heading:
-      - text: "Calcule"
-        style: accent
-      - text: " o custo real"
-        style: primary
-
-  - asset: batch_quotes
-    heading:
-      - text: "Calcule"
-        style: accent
-      - text: " lotes"
-        style: primary
-
-  - asset: materials
-    heading:
-      - text: "Acompanhe"
-        style: accent
-      - text: " materiais"
-        style: primary
-
-  - asset: gcode_import
-    heading:
-      - text: "Importe"
-        style: accent
-      - text: " G-Code"
-        style: primary
-
-  - asset: history_export
-    heading:
-      - text: "Salve"
-        style: accent
-      - text: " o histórico"
-        style: primary
-
-  - asset: settings_free
-    heading:
-      - text: "Defina"
-        style: accent
-      - text: " padrões"
-        style: primary
-
-  - asset: calculator_pro
-    heading:
-      - text: "Desbloqueie"
-        style: accent
-      - text: " preços avançados"
-        style: primary
-
-  - asset: settings_pro
+  - asset: connections_overview
     heading:
       - line:
-          - text: "Sem contas."
-            style: accent
-      - line:
-          - text: "Sem nuvem."
+          - text: "Suas conexões,"
             style: primary
       - line:
-          - text: "Simples assim."
-            style: accent
+          - text: "em contexto."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Uma visão mais clara de quem segue você"
+            style: primary
+      - line:
+          - text: "e de quem você segue."
+            style: primary
+  - asset: safe_import
+    heading:
+      - line:
+          - text: "Escolha o arquivo."
+            style: primary
+      - line:
+          - text: "Sem fazer login."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Use a exportação oficial do Instagram."
+            style: primary
+      - line:
+          - text: "Sua senha não é necessária."
+            style: primary
+  - asset: mutual_accounts
+    heading:
+      - line:
+          - text: "Veja quem segue"
+            style: primary
+      - line:
+          - text: "você de volta."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Explore os perfis em comum"
+            style: primary
+      - line:
+          - text: "entre seguidores e seguidos."
+            style: primary
+  - asset: snapshot_context
+    heading:
+      - line:
+          - text: "Guarde o que mudou."
+            style: primary
+      - line:
+          - text: "Preserve o contexto."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Compare os registros sem"
+            style: primary
+      - line:
+          - text: "tirar conclusões precipitadas."
+            style: primary
+  - asset: local_privacy
+    heading:
+      - line:
+          - text: "Seus dados."
+            style: primary
+      - line:
+          - text: "Seu dispositivo."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Processados localmente, sem"
+            style: primary
+      - line:
+          - text: "conectar sua conta."
+            style: primary
+  - asset: ipad_connections_overview
+    format: ipad
+    heading:
+      - line:
+          - text: "Suas conexões,"
+            style: primary
+      - line:
+          - text: "em contexto."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Uma visão mais clara de quem segue você"
+            style: primary
+      - line:
+          - text: "e de quem você segue."
+            style: primary
+  - asset: ipad_safe_import
+    format: ipad
+    heading:
+      - line:
+          - text: "Escolha o arquivo."
+            style: primary
+      - line:
+          - text: "Sem fazer login."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Use a exportação oficial do Instagram."
+            style: primary
+      - line:
+          - text: "Sua senha não é necessária."
+            style: primary
+  - asset: ipad_mutual_accounts
+    format: ipad
+    heading:
+      - line:
+          - text: "Veja quem segue"
+            style: primary
+      - line:
+          - text: "você de volta."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Explore os perfis em comum"
+            style: primary
+      - line:
+          - text: "entre seguidores e seguidos."
+            style: primary
+  - asset: ipad_snapshot_context
+    format: ipad
+    heading:
+      - line:
+          - text: "Guarde o que mudou."
+            style: primary
+      - line:
+          - text: "Preserve o contexto."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Compare os registros sem"
+            style: primary
+      - line:
+          - text: "tirar conclusões precipitadas."
+            style: primary
+  - asset: ipad_local_privacy
+    format: ipad
+    heading:
+      - line:
+          - text: "Seus dados."
+            style: primary
+      - line:
+          - text: "Seu dispositivo."
+            style: primary
+    subtitle:
+      - line:
+          - text: "Processados localmente, sem"
+            style: primary
+      - line:
+          - text: "conectar sua conta."
+            style: primary

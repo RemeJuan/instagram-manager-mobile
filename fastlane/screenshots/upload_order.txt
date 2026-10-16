@@ -1,8 +1,5 @@
-calculator_free
-batch_quotes
-materials
-gcode_import
-history_export
-settings_free
-calculator_pro
-settings_pro
+connections_overview
+safe_import
+mutual_accounts
+snapshot_context
+local_privacy

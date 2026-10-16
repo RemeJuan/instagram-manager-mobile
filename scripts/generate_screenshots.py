@@ -2,8 +2,8 @@
 """
 Generate localized store screenshots with template-driven text overlays.
 
-Renders heading text at per-asset coordinates over fixed base images.
-Base images must be at exact output resolution — no resizing performed.
+Renders heading and optional subtitle at per-asset coordinates over fixed base images.
+Optional per-format target_size resizes the rendered composite for store output.
 
 Usage:
     python3 scripts/generate_screenshots.py [options]
@@ -13,10 +13,12 @@ Options:
     --layout FILE        Layout metadata YAML (default: fastlane/screenshots/layout.yaml)
     --copy-dir DIR       Copy YAML directory (default: fastlane/screenshots/copy)
     --output-dir DIR     Output directory (default: fastlane/screenshots/output)
-    --formats LIST       Comma-separated platforms (default: ios,android)
+    --formats LIST       Comma-separated platforms (default: ios)
     --locale LOCALE      Generate only this locale
     --font PATH          Heading font path (default: assets/fonts/inter/Inter-Bold.ttf)
     --skip-missing       Skip missing base images instead of failing
+    --base-dir flat image inputs are accepted for iOS; passthrough assets
+                         are copied without decoding or modifying source bytes
 """
 
 import argparse
@@ -53,15 +55,21 @@ COLORS = {
 
 FORMAT_BASE_SUBDIRS = {
     "ios": "ios",
+    "ipad": ".",
     "android": "android",
 }
 
 
-def _resolve_font(path_spec, size):
+def _resolve_font(path_spec, size, weight=None):
     path = Path(path_spec) if path_spec else None
+    if path and not path.is_absolute():
+        path = REPO_ROOT / path
     if path and path.exists():
         try:
-            return ImageFont.truetype(str(path), round(size))
+            font = ImageFont.truetype(str(path), round(size))
+            if weight is not None:
+                font.set_variation_by_axes([weight])
+            return font
         except Exception:
             pass
     for candidate in [
@@ -119,39 +127,88 @@ def _validate_layout(data, path):
         if "assets" not in fmt_data:
             print(f"ERROR: {path}: format '{fmt}' missing 'assets'")
             sys.exit(1)
+        target_size = fmt_data.get("target_size")
+        if target_size is not None and (
+            not isinstance(target_size, list)
+            or len(target_size) != 2
+            or any(not isinstance(value, int) or value <= 0 for value in target_size)
+        ):
+            print(f"ERROR: {path}: format '{fmt}' target_size must be a pair of positive integers")
+            sys.exit(1)
+        if "design_width" in fmt_data and (
+            not isinstance(fmt_data["design_width"], (int, float))
+            or fmt_data["design_width"] <= 0
+        ):
+            print(f"ERROR: {path}: format '{fmt}' design_width must be positive")
+            sys.exit(1)
+        outputs = set()
         for aid, cfg in fmt_data["assets"].items():
             if "source" not in cfg:
                 print(f"ERROR: {path}: format '{fmt}' asset '{aid}' missing 'source'")
                 sys.exit(1)
-            for k in (
-                "x",
-                "y",
-                "max_width",
-                "max_height",
-                "font_size",
-                "min_font_size",
-                "line_height",
-                "max_lines",
-                "align",
-                "wrap",
-                "fit_mode",
-            ):
-                if k not in cfg:
-                    print(f"ERROR: {path}: format '{fmt}' asset '{aid}' missing '{k}'")
+            output = cfg.get("output")
+            if output is not None:
+                if (not isinstance(output, str) or not output or
+                        Path(output).name != output or output in (".", "..") or
+                        (cfg.get("passthrough") is not True and
+                         Path(output).suffix.lower() != ".png")):
+                    print(f"ERROR: {path}: format '{fmt}' asset '{aid}' has invalid output filename")
                     sys.exit(1)
-            if cfg["wrap"] is not True:
-                print(f"ERROR: {path}: format '{fmt}' asset '{aid}' wrap must be true")
-                sys.exit(1)
-            if cfg["fit_mode"] != "shrink_to_fit":
-                print(f"ERROR: {path}: format '{fmt}' asset '{aid}' fit_mode must be shrink_to_fit")
-                sys.exit(1)
+                if output in outputs:
+                    print(f"ERROR: {path}: format '{fmt}' duplicate output filename '{output}'")
+                    sys.exit(1)
+                outputs.add(output)
+            if cfg.get("passthrough") is True:
+                continue
+            for zone in ("heading", "subtitle"):
+                if zone in cfg:
+                    _validate_text_zone(cfg[zone], path, fmt, aid, zone)
+            if "heading" not in cfg:
+                _validate_text_zone(cfg, path, fmt, aid, "heading")
 
 
-def _validate_copy(data, path, fmt_assets):
+def _validate_text_zone(cfg, path, fmt, aid, zone):
+    if not isinstance(cfg, dict):
+        print(f"ERROR: {path}: format '{fmt}' asset '{aid}' {zone} must be a mapping")
+        sys.exit(1)
+    for k in (
+        "x",
+        "y",
+        "max_width",
+        "max_height",
+        "font_size",
+        "min_font_size",
+        "line_height",
+        "max_lines",
+        "align",
+        "wrap",
+        "fit_mode",
+    ):
+        if k not in cfg:
+            print(f"ERROR: {path}: format '{fmt}' asset '{aid}' {zone} missing '{k}'")
+            sys.exit(1)
+    if cfg["wrap"] is not True:
+        print(f"ERROR: {path}: format '{fmt}' asset '{aid}' {zone} wrap must be true")
+        sys.exit(1)
+    if cfg["fit_mode"] != "shrink_to_fit":
+        print(f"ERROR: {path}: format '{fmt}' asset '{aid}' {zone} fit_mode must be shrink_to_fit")
+        sys.exit(1)
+
+
+def _screenshots_for_format(data, fmt):
+    return [
+        screenshot
+        for screenshot in data["screenshots"]
+        if screenshot.get("format") == fmt
+        or ("format" not in screenshot and fmt in ("ios", "android"))
+    ]
+
+
+def _validate_copy(data, path, fmt_assets, fmt):
     if not data or "screenshots" not in data:
         print(f"ERROR: {path} missing 'screenshots' key")
         sys.exit(1)
-    for i, ss in enumerate(data["screenshots"]):
+    for i, ss in enumerate(_screenshots_for_format(data, fmt)):
         if "asset" not in ss:
             print(f"ERROR: {path}: screenshot #{i + 1} missing 'asset' id")
             sys.exit(1)
@@ -166,24 +223,40 @@ def _validate_copy(data, path, fmt_assets):
         if not isinstance(heading, list) or len(heading) == 0:
             print(f"ERROR: {path}: asset '{aid}' heading must be a non-empty list")
             sys.exit(1)
-        for j, entry in enumerate(heading):
-            if isinstance(entry, dict) and "line" in entry:
-                line_segs = entry["line"]
-                if not isinstance(line_segs, list) or len(line_segs) == 0:
-                    print(
-                        f"ERROR: {path}: asset '{aid}' heading line #{j + 1} "
-                        f"must be a non-empty list"
-                    )
-                    sys.exit(1)
-                for k, seg in enumerate(line_segs):
-                    _validate_segment(path, aid, seg, j, k)
-            else:
-                _validate_segment(path, aid, entry, j, None)
+        _validate_lines(heading, path, aid, "heading")
+        if "subtitle" in ss:
+            if "subtitle" not in fmt_assets[aid] and fmt_assets[aid].get("passthrough") is not True:
+                print(f"ERROR: {path}: asset '{aid}' has subtitle copy but no subtitle layout")
+                sys.exit(1)
+            subtitle = ss["subtitle"]
+            if not isinstance(subtitle, list) or not subtitle:
+                print(f"ERROR: {path}: asset '{aid}' subtitle must be a non-empty list")
+                sys.exit(1)
+            _validate_lines(subtitle, path, aid, "subtitle")
+        elif "subtitle" in fmt_assets[aid] and fmt_assets[aid].get("passthrough") is not True:
+            print(f"ERROR: {path}: asset '{aid}' missing 'subtitle'")
+            sys.exit(1)
 
 
-def _validate_segment(path, aid, seg, line_idx, seg_idx):
+def _validate_lines(lines, path, aid, zone):
+    for j, entry in enumerate(lines):
+        if isinstance(entry, dict) and "line" in entry:
+            line_segs = entry["line"]
+            if not isinstance(line_segs, list) or len(line_segs) == 0:
+                print(
+                    f"ERROR: {path}: asset '{aid}' {zone} line #{j + 1} "
+                    f"must be a non-empty list"
+                )
+                sys.exit(1)
+            for k, seg in enumerate(line_segs):
+                _validate_segment(path, aid, seg, j, k, zone)
+        else:
+            _validate_segment(path, aid, entry, j, None, zone)
+
+
+def _validate_segment(path, aid, seg, line_idx, seg_idx, zone):
     label = f"segment #{seg_idx + 1}" if seg_idx is not None else "entry"
-    pos = f"heading line #{line_idx + 1} {label}"
+    pos = f"{zone} line #{line_idx + 1} {label}"
     if "text" not in seg or "style" not in seg:
         print(f"ERROR: {path}: asset '{aid}' {pos} missing 'text' or 'style'")
         sys.exit(1)
@@ -195,6 +268,7 @@ def _validate_segment(path, aid, seg, line_idx, seg_idx):
 def _resolve_formats(raw):
     PLATFORM_PRESETS = {
         "ios": ["ios"],
+        "ipad": ["ipad"],
         "android": ["android"],
     }
     out = []
@@ -282,6 +356,13 @@ def _measure_line(draw, line, font):
 
 
 def _render_heading(draw, heading, cfg, font_path, colors):
+    from PIL import ImageColor
+
+    font_path = cfg.get("font", font_path)
+    colors = {**colors, **{
+        style: ImageColor.getrgb(value) if isinstance(value, str) else tuple(value)
+        for style, value in cfg.get("colors", {}).items()
+    }}
     x = cfg["x"]
     y = cfg["y"]
     max_width = cfg["max_width"]
@@ -308,7 +389,7 @@ def _render_heading(draw, heading, cfg, font_path, colors):
     resolved = None
     warned_floor = False
     while size >= absolute_min_size:
-        font = _resolve_font(font_path, size)
+        font = _resolve_font(font_path, size, cfg.get("font_weight"))
         line_step = max(1, round(line_height * (size / base_size)))
         wrapped_lines = []
 
@@ -353,7 +434,7 @@ def _render_heading(draw, heading, cfg, font_path, colors):
 
     if resolved is None and size < absolute_min_size:
         size = absolute_min_size
-        font = _resolve_font(font_path, size)
+        font = _resolve_font(font_path, size, cfg.get("font_weight"))
         line_step = max(1, round(line_height * (size / base_size)))
         wrapped_lines = []
         for tokens, line_cfg in paragraphs:
@@ -367,7 +448,7 @@ def _render_heading(draw, heading, cfg, font_path, colors):
             f"WARN: heading does not fit box at format size {base_size}px "
             f"for box {max_width}x{max_height}; rendering best effort"
         )
-        font = _resolve_font(font_path, absolute_min_size)
+        font = _resolve_font(font_path, absolute_min_size, cfg.get("font_weight"))
         line_step = max(1, round(line_height * (absolute_min_size / base_size)))
         wrapped_lines = []
         for tokens, line_cfg in paragraphs:
@@ -399,6 +480,17 @@ def _render_heading(draw, heading, cfg, font_path, colors):
 
 def _is_ios_format(fmt):
     return fmt == "ios"
+
+
+def _scaled_zone(cfg, scale):
+    if scale == 1:
+        return cfg
+    scaled = cfg.copy()
+    for key in ("x", "y", "max_width", "max_height", "font_size",
+                "min_font_size", "absolute_min_font_size", "line_height"):
+        if key in scaled:
+            scaled[key] = round(scaled[key] * scale)
+    return scaled
 
 
 def generate(
@@ -443,6 +535,9 @@ def generate(
         fmt_assets = fmt_cfg["assets"]
         fmt_output = output_dir / fmt
 
+        for locale, data in copy_data.items():
+            _validate_copy(data, copy_paths[locale], fmt_assets, fmt)
+
         if locales:
             for locale in copy_data:
                 shutil.rmtree(fmt_output / locale, ignore_errors=True)
@@ -450,19 +545,22 @@ def generate(
             shutil.rmtree(fmt_output, ignore_errors=True)
 
         for locale, data in copy_data.items():
-            _validate_copy(data, copy_paths[locale], fmt_assets)
-
-        for locale, data in copy_data.items():
             locale_output = output_dir / fmt / locale
             locale_output.mkdir(parents=True, exist_ok=True)
 
-            for screenshot in data["screenshots"]:
+            for screenshot in _screenshots_for_format(data, fmt):
                 aid = screenshot["asset"]
                 asset_cfg = fmt_assets[aid]
                 source = asset_cfg["source"]
                 heading = screenshot["heading"]
 
-                base_path = base_dir / _format_base_subdir(fmt) / source
+                nested_base_path = base_dir / _format_base_subdir(fmt) / source
+                flat_base_path = base_dir / source
+                base_path = (
+                    flat_base_path
+                    if fmt in ("ios", "ipad") and flat_base_path.exists()
+                    else nested_base_path
+                )
 
                 if not base_path.exists():
                     if skip_missing:
@@ -472,13 +570,31 @@ def generate(
                         print(f"ERROR: Base image not found: {base_path}")
                         sys.exit(1)
 
-                img = Image.open(base_path).convert("RGB")
-                draw = ImageDraw.Draw(img)
-
-                _render_heading(draw, heading, asset_cfg, font_path, COLORS)
-
-                output_path = locale_output / source.replace(".jpg", ".png")
-                img.save(output_path, "PNG")
+                output_name = asset_cfg.get("output")
+                output_path = locale_output / (output_name or source)
+                if asset_cfg.get("passthrough") is True:
+                    shutil.copyfile(base_path, output_path)
+                else:
+                    img = Image.open(base_path).convert("RGB")
+                    draw = ImageDraw.Draw(img)
+                    design_width = fmt_cfg.get("design_width", img.width)
+                    scale = img.width / design_width
+                    _render_heading(
+                        draw, heading,
+                        _scaled_zone(asset_cfg.get("heading", asset_cfg), scale),
+                        font_path, COLORS,
+                    )
+                    if "subtitle" in screenshot:
+                        _render_heading(
+                            draw, screenshot["subtitle"],
+                            _scaled_zone(asset_cfg["subtitle"], scale),
+                            font_path, COLORS,
+                        )
+                    target_size = fmt_cfg.get("target_size")
+                    if target_size:
+                        img = img.resize(tuple(target_size), Image.Resampling.LANCZOS)
+                    output_path = locale_output / (output_name or (Path(source).stem + ".png"))
+                    img.save(output_path, "PNG")
                 print(f"  OK   {locale}/{fmt}/{output_path.name}")
 
         if _is_ios_format(fmt):
@@ -502,8 +618,8 @@ def main():
     parser.add_argument("--output-dir", default=str(DEFAULT_OUTPUT_DIR))
     parser.add_argument("--font", default=str(DEFAULT_FONT))
     parser.add_argument(
-        "--formats", default="ios,android",
-        help="Comma-separated: ios, android, all",
+        "--formats", default="ios",
+        help="Comma-separated: ios, ipad, android, all",
     )
     parser.add_argument("--locale", help="Generate only this locale")
     parser.add_argument(
