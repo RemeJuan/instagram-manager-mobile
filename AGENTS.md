@@ -14,10 +14,6 @@
 
 ## Product and safety invariants
 - Imports stay local: no Instagram login, credentials, private APIs, scraping, or upload. Validate untrusted JSON and bound ZIP resource use; never extract archive-controlled paths. Fail closed if archive protections cannot be enforced.
-- Use synthetic fixtures for committed tests and examples. A private real export may be used only locally with owner approval for physical-device measurement; never commit, upload, or log it or its usernames/content.
-- Explicitly track complete/partial coverage per side. Partial imports add positive observations only and never imply absence. Missing sides remain unknown; complete omission can establish absence only for that side.
-- Preserve source/export timestamps as such; missing or invalid timestamps remain unavailable. Device import timestamps are for local ordering/troubleshooting only, never relationship-event dates.
-- Keep sensitive exports and derived relationship data local. No analytics or external service receives export contents, usernames, filenames identifying a person, or relationship lists. Any later release disclosure must accurately describe local storage, platform backup behavior, and purchase-service data flows.
 - Phase 0 includes synthetic ZIP/JSON fixtures, bounded-input/security checks, and SQLite write/read/reopen probing. Physical iPhone picker/temp-copy cleanup, force-quit/reopen persistence, parse time, memory and responsiveness remain unmeasured and must be verified in private TestFlight before wider release; record device and OS. Critical ZIP safety failures block progression.
 - Preserve uncertainty in user-facing conclusions: exports do not prove rename, deletion, blocking, or exact follow/unfollow time.
 
