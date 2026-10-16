@@ -42,33 +42,255 @@ def ios_screenshots_dir
   File.join(screenshots_output_dir, "ios")
 end
 
-def stage_ios_screenshots_upload
+IOS_SCREENSHOT_LOCALES = %w[en-GB de-DE es-ES fr-FR it pt-BR].freeze
+IOS_SCREENSHOT_NAMES = %w[01.png 02.png 03.png 04.png 05.png].freeze
+IOS_SCREENSHOT_SIZE = [1206, 2622].freeze
+IOS_SCREENSHOT_TYPE = "APP_IPHONE_61".freeze
+IOS_SCREENSHOT_APP_ID = "com.kinship.instagram.manager".freeze
+IPAD_SCREENSHOT_TYPE = "APP_IPAD_PRO_3GEN_129".freeze
+IPAD_SCREENSHOT_SIZE = [2064, 2752].freeze
+
+def kinship_screenshot_gate!
+  expected_locales = %w[en-GB de-DE es-ES fr-FR it pt-BR]
+  UI.user_error!("Screenshot authorization scope changed; review KINSHIP_RELEASE.md") unless IOS_SCREENSHOT_APP_ID == "com.kinship.instagram.manager" && IOS_SCREENSHOT_LOCALES == expected_locales && IOS_SCREENSHOT_TYPE == "APP_IPHONE_61"
+  UI.message("Authorized screenshot-only scope: #{IOS_SCREENSHOT_APP_ID}, iOS 1.0, #{IOS_SCREENSHOT_LOCALES.join(', ')}, #{IOS_SCREENSHOT_TYPE}; no metadata, binary, or submission")
+end
+
+def validate_ios_screenshot_files!
   source_dir = ios_screenshots_dir
   UI.user_error!("Missing iOS screenshots output: #{source_dir}") unless Dir.exist?(source_dir)
+  locales = Dir.children(source_dir).select { |name| File.directory?(File.join(source_dir, name)) }.sort
+  UI.user_error!("Screenshot output must contain exactly the authorized six locales") unless locales == IOS_SCREENSHOT_LOCALES.sort
+  UI.user_error!("Screenshot output contains unexpected entries") unless Dir.children(source_dir).sort == locales
+
+  locales.each do |locale|
+    locale_dir = File.join(source_dir, locale)
+    entries = Dir.children(locale_dir).sort
+    allowed_entries = IOS_SCREENSHOT_NAMES + ["name.txt"]
+    UI.user_error!("#{locale} has unexpected screenshot files or subdirectories") unless (entries - allowed_entries).empty? && IOS_SCREENSHOT_NAMES.all? { |name| entries.include?(name) } && entries.none? { |name| File.directory?(File.join(locale_dir, name)) }
+    IOS_SCREENSHOT_NAMES.each do |name|
+      path = File.join(locale_dir, name)
+      UI.user_error!("Screenshot missing or not regular file: #{locale}/#{name}") unless File.file?(path) && !File.symlink?(path)
+      File.open(path, "rb") do |file|
+        header = file.read(24)
+        valid = header && header.byteslice(0, 8) == "\x89PNG\r\n\x1a\n".b && header.byteslice(12, 4) == "IHDR"
+        dimensions = valid ? header.byteslice(16, 8).unpack("NN") : nil
+        UI.user_error!("Invalid PNG or dimensions for #{locale}/#{name}") unless dimensions == IOS_SCREENSHOT_SIZE
+      end
+    end
+  end
+  source_dir
+end
+
+def ipad_screenshots_dir
+  File.join(screenshots_output_dir, "ipad")
+end
+
+def validate_ipad_screenshot_files!
+  source_dir = ipad_screenshots_dir
+  UI.user_error!("Missing iPad screenshots output: #{source_dir}") unless Dir.exist?(source_dir)
+  locales = Dir.children(source_dir).sort
+  UI.user_error!("iPad screenshot output must contain exactly the authorized six locales") unless locales == IOS_SCREENSHOT_LOCALES.sort
+  locales.each do |locale|
+    locale_dir = File.join(source_dir, locale)
+    UI.user_error!("Unexpected iPad locale entry") unless File.directory?(locale_dir) && !File.symlink?(locale_dir)
+    entries = Dir.children(locale_dir).sort
+    UI.user_error!("#{locale} must contain exactly five iPad PNGs") unless entries == IOS_SCREENSHOT_NAMES
+    IOS_SCREENSHOT_NAMES.each do |name|
+      path = File.join(locale_dir, name)
+      UI.user_error!("iPad screenshot missing or not regular: #{locale}/#{name}") unless File.file?(path) && !File.symlink?(path)
+      File.open(path, "rb") do |file|
+        header = file.read(24)
+        valid = header && header.byteslice(0, 8) == "\x89PNG\r\n\x1a\n".b && header.byteslice(12, 4) == "IHDR"
+        dimensions = valid ? header.byteslice(16, 8).unpack("NN") : nil
+        UI.user_error!("Invalid iPad PNG or dimensions: #{locale}/#{name}") unless dimensions == IPAD_SCREENSHOT_SIZE
+      end
+    end
+  end
+  source_dir
+end
+
+def ipad_screenshot_snapshot!(localization, local_paths, sets: nil, allow_prefix: true)
+  unless sets
+    result = localization.get_app_screenshot_sets(includes: "appScreenshots")
+    sets = result.respond_to?(:to_models) ? result.to_models : result
+    UI.user_error!("Invalid full screenshot-set inventory") unless sets.is_a?(Array)
+    UI.user_error!("Unexpected screenshot display type") unless sets.all? { |set| [IOS_SCREENSHOT_TYPE, IPAD_SCREENSHOT_TYPE].include?(set.screenshot_display_type.to_s) }
+    sets = sets.select { |set| set.screenshot_display_type.to_s == IPAD_SCREENSHOT_TYPE }
+  end
+  UI.user_error!("Invalid iPad screenshot-set inventory") unless sets.is_a?(Array)
+  UI.user_error!("Unexpected iPad screenshot set type or duplicate set") unless sets.length <= 1 && sets.all? { |set| set.screenshot_display_type.to_s == IPAD_SCREENSHOT_TYPE }
+  return { set: nil, records: [] } if sets.empty?
+  set = sets.first
+  images = set.app_screenshots
+  UI.user_error!("ASC omitted iPad screenshot list") unless images.is_a?(Array)
+  UI.user_error!("Unexpected iPad screenshot count") if images.length > IOS_SCREENSHOT_NAMES.length || (!allow_prefix && images.length != IOS_SCREENSHOT_NAMES.length)
+  records = images.each_with_index.map do |image, index|
+    state = (image.asset_delivery_state || {}).fetch("state", "").to_s
+    checksum = image.source_file_checksum.to_s.downcase
+    expected = Digest::MD5.file(local_paths.fetch(index)).hexdigest
+    UI.user_error!("iPad screenshot mismatch at position #{index + 1}") unless state == "COMPLETE" && checksum == expected
+    { id: image.id.to_s, checksum: checksum, state: state, position: index }
+  end
+  { set: set, records: records }
+end
+
+def ipad_remote_inventory!(app, locale_local_paths)
+  version = app.get_edit_app_store_version(platform: Spaceship::ConnectAPI::Platform::IOS)
+  UI.user_error!("iPad screenshots require editable iOS version 1.0") unless version && version.version_string.to_s == "1.0" && version.platform.to_s.downcase == "ios" && %w[PREPARE_FOR_SUBMISSION METADATA_REJECTED].include?(version.app_store_state.to_s)
+  result = version.get_app_store_version_localizations
+  localizations = result.respond_to?(:to_models) ? result.to_models : result
+  UI.user_error!("Invalid full localization inventory") unless localizations.is_a?(Array)
+  locale_ids = localizations.map { |item| item.locale.to_s }
+  UI.user_error!("Duplicate or empty remote localization") unless locale_ids.none?(&:empty?) && locale_ids.uniq.length == locale_ids.length
+  expected = IOS_SCREENSHOT_LOCALES + ["ja"]
+  UI.user_error!("Unexpected remote locale inventory") unless locale_ids.sort == expected.sort
+  snapshots = {}
+  localizations.each do |localization|
+    locale = localization.locale.to_s
+    result = localization.get_app_screenshot_sets(includes: "appScreenshots")
+    sets = result.respond_to?(:to_models) ? result.to_models : result
+    UI.user_error!("Invalid screenshot-set inventory for #{locale}") unless sets.is_a?(Array)
+    UI.user_error!("Unexpected screenshot display type in #{locale}") unless sets.all? { |set| [IOS_SCREENSHOT_TYPE, IPAD_SCREENSHOT_TYPE].include?(set.screenshot_display_type.to_s) }
+    phone_sets = sets.select { |set| set.screenshot_display_type.to_s == IOS_SCREENSHOT_TYPE }
+    tablet_sets = sets.select { |set| set.screenshot_display_type.to_s == IPAD_SCREENSHOT_TYPE }
+    UI.user_error!("Duplicate phone or iPad set in #{locale}") unless phone_sets.length <= 1 && tablet_sets.length <= 1
+    if IOS_SCREENSHOT_LOCALES.include?(locale)
+      phone_paths = IOS_SCREENSHOT_NAMES.each_with_index.to_h { |name, index| [index, File.join(ios_screenshots_dir, locale, name)] }
+      phone = ios_screenshot_set_snapshot!(localization, phone_paths, sets: phone_sets)
+      UI.user_error!("iPhone set incomplete in #{locale}") unless phone[:count] == 5
+      ipad = ipad_screenshot_snapshot!(localization, locale_local_paths.fetch(locale), sets: tablet_sets)
+    else
+      UI.user_error!("Japanese screenshot sets must remain absent") unless sets.empty?
+      phone = { set: nil, count: 0, records: [] }
+      ipad = { set: nil, records: [] }
+    end
+    snapshots[locale] = { localization: localization, phone: phone, ipad: ipad }
+  end
+  [version, snapshots]
+end
+
+def ipad_screenshot_readback!
+  source_dir = validate_ipad_screenshot_files!
+  require "digest/md5"
+  local_paths = IOS_SCREENSHOT_LOCALES.to_h do |locale|
+    [locale, IOS_SCREENSHOT_NAMES.each_with_index.to_h { |name, index| [index, File.join(source_dir, locale, name)] }]
+  end
+  UI.user_error!("Screenshot authorization requires exact configured app") unless IOS_SCREENSHOT_APP_ID == CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier).to_s
+  app = Spaceship::ConnectAPI::App.find(IOS_SCREENSHOT_APP_ID)
+  UI.user_error!("Could not find exact authorized app") unless app && app.bundle_id.to_s == IOS_SCREENSHOT_APP_ID
+  _version, snapshots = ipad_remote_inventory!(app, local_paths)
+  snapshots.each do |locale, snapshot|
+    UI.message("iPad inventory locale=#{locale} count=#{snapshot[:ipad][:records].length}")
+    snapshot[:ipad][:records].each { |record| UI.message("iPad locale=#{locale} position=#{record[:position] + 1} state=#{record[:state]} checksum=#{record[:checksum]}") }
+    snapshot[:phone][:records].each { |record| UI.message("iPhone locale=#{locale} position=#{record[:position] + 1} state=#{record[:state]} checksum=#{record[:checksum]} unchanged_baseline") }
+  end
+  UI.success("GET-only iPad inventory completed; phone screenshots and ja verified unchanged")
+end
+
+def ipad_screenshot_sync!(locale)
+  UI.user_error!("Locale outside authorized scope") unless IOS_SCREENSHOT_LOCALES.include?(locale)
+  source_dir = validate_ipad_screenshot_files!
+  require "digest/md5"
+  local_paths = IOS_SCREENSHOT_LOCALES.to_h do |loc|
+    [loc, IOS_SCREENSHOT_NAMES.each_with_index.to_h { |name, index| [index, File.join(source_dir, loc, name)] }]
+  end
+  UI.user_error!("Screenshot authorization requires exact configured app") unless IOS_SCREENSHOT_APP_ID == CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier).to_s
+  app = Spaceship::ConnectAPI::App.find(IOS_SCREENSHOT_APP_ID)
+  UI.user_error!("Could not find exact authorized app") unless app && app.bundle_id.to_s == IOS_SCREENSHOT_APP_ID
+  _version, baseline = ipad_remote_inventory!(app, local_paths)
+  target = baseline.fetch(locale)
+  target_set = target[:ipad][:set]
+  count = target[:ipad][:records].length
+  if target_set.nil?
+    target_set = target[:localization].create_app_screenshot_set(attributes: { screenshotDisplayType: IPAD_SCREENSHOT_TYPE })
+    UI.user_error!("ASC did not return new iPad screenshot set") unless target_set && target_set.screenshot_display_type.to_s == IPAD_SCREENSHOT_TYPE
+  end
+  (count...5).each do |position|
+    begin
+      target_set.upload_screenshot(path: local_paths.fetch(locale).fetch(position), wait_for_processing: true, position: position)
+    rescue StandardError
+      UI.user_error!("iPad upload outcome ambiguous at #{locale} position #{position + 1}; stopped without retry. Run GET-only ipad_screenshot_readback before recovery.")
+    end
+    fresh = ipad_screenshot_snapshot!(target[:localization], local_paths.fetch(locale))
+    UI.user_error!("iPad append readback mismatch at #{locale} position #{position + 1}") unless fresh[:set]&.id.to_s == target_set.id.to_s && fresh[:records].length == position + 1
+    target_set = fresh[:set]
+  end
+  _version, after = ipad_remote_inventory!(app, local_paths)
+  after.each do |other_locale, snapshot|
+    old = baseline.fetch(other_locale)
+    UI.user_error!("Phone set changed during iPad sync: #{other_locale}") unless snapshot[:phone][:records] == old[:phone][:records]
+    next if other_locale == locale
+    UI.user_error!("Other locale iPad set changed: #{other_locale}") unless snapshot[:ipad][:records] == old[:ipad][:records]
+  end
+  UI.user_error!("iPad target not exactly five images") unless after.fetch(locale)[:ipad][:records].length == 5
+  UI.success("Verified five iPad screenshots for #{locale}; phone and other locales unchanged")
+end
+
+def ipad_screenshot_diagnose!(locale)
+  UI.user_error!("Locale outside authorized scope") unless IOS_SCREENSHOT_LOCALES.include?(locale)
+  source_dir = validate_ipad_screenshot_files!
+  require "digest/md5"
+  UI.user_error!("Screenshot authorization requires exact configured app") unless IOS_SCREENSHOT_APP_ID == CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier).to_s
+  app = Spaceship::ConnectAPI::App.find(IOS_SCREENSHOT_APP_ID)
+  UI.user_error!("Could not find exact authorized app") unless app && app.bundle_id.to_s == IOS_SCREENSHOT_APP_ID
+  version = app.get_edit_app_store_version(platform: Spaceship::ConnectAPI::Platform::IOS)
+  UI.message("iPad diagnosis version=#{version&.version_string} platform=#{version&.platform} state=#{version&.app_store_state}")
+  UI.user_error!("iPad diagnosis requires iOS version 1.0") unless version && version.version_string.to_s == "1.0" && version.platform.to_s.downcase == "ios"
+  localizations_result = version.get_app_store_version_localizations
+  localizations = localizations_result.respond_to?(:to_models) ? localizations_result.to_models : localizations_result
+  UI.user_error!("Invalid remote localization inventory") unless localizations.is_a?(Array)
+  matches = localizations.select { |item| item.locale.to_s == locale }
+  UI.user_error!("Expected exactly one remote localization for #{locale}") unless matches.length == 1
+  sets_result = matches.first.get_app_screenshot_sets(includes: "appScreenshots")
+  sets = sets_result.respond_to?(:to_models) ? sets_result.to_models : sets_result
+  UI.user_error!("Invalid screenshot-set inventory") unless sets.is_a?(Array)
+  UI.user_error!("Unexpected screenshot set type or duplicate iPad set") unless sets.all? { |set| [IOS_SCREENSHOT_TYPE, IPAD_SCREENSHOT_TYPE].include?(set.screenshot_display_type.to_s) } && sets.count { |set| set.screenshot_display_type.to_s == IPAD_SCREENSHOT_TYPE } <= 1
+  set = sets.find { |candidate| candidate.screenshot_display_type.to_s == IPAD_SCREENSHOT_TYPE }
+  unless set
+    UI.message("iPad diagnosis locale=#{locale} set=absent")
+    return
+  end
+  screenshots = set.app_screenshots
+  UI.user_error!("ASC omitted included iPad screenshots") unless screenshots.is_a?(Array)
+  UI.message("iPad diagnosis locale=#{locale} set_id=#{set.id} display_type=#{set.screenshot_display_type} count=#{screenshots.length}")
+  screenshots.each_with_index do |screenshot, index|
+    checksum = screenshot.source_file_checksum.to_s.downcase
+    local_checksums = IOS_SCREENSHOT_NAMES.each_with_index.map do |name, local_index|
+      [name, Digest::MD5.file(File.join(source_dir, locale, name)).hexdigest, local_index]
+    end
+    expected = local_checksums[index]
+    matched = local_checksums.select { |_name, md5, _local_index| !checksum.empty? && md5 == checksum }
+    UI.message("iPad diagnosis locale=#{locale} set=#{set.id} screenshot_id=#{screenshot.id} index=#{index + 1} state=#{(screenshot.asset_delivery_state || {}).fetch('state', 'unavailable')} sourceFileChecksum=#{checksum.empty? ? 'unavailable' : checksum} expected_local_md5=#{expected ? expected[1] : 'none'} expected_local_filename=#{expected ? expected[0] : 'none'} checksum_match_local=#{matched.map(&:first).join(',').then { |value| value.empty? ? 'none' : value }}")
+  end
+end
+
+def stage_ios_screenshots_upload
+  source_dir = validate_ios_screenshot_files!
 
   staging_dir = Dir.mktmpdir("ios-screenshots-upload-")
 
-  Dir.children(source_dir).sort.each do |locale|
-    locale_src = File.join(source_dir, locale)
-    next unless File.directory?(locale_src)
+  begin
+    Dir.children(source_dir).sort.each do |locale|
+      locale_src = File.join(source_dir, locale)
+      UI.user_error!("Unexpected non-directory screenshot locale entry") unless File.directory?(locale_src)
 
-    locale_dst = File.join(staging_dir, locale)
-    FileUtils.mkdir_p(locale_dst)
+      locale_dst = File.join(staging_dir, locale)
+      FileUtils.mkdir_p(locale_dst)
 
-    by_asset = Dir.glob(File.join(locale_src, "*.png")).each_with_object({}) do |path, memo|
-      memo[File.basename(path, ".png")] = path
+      IOS_SCREENSHOT_NAMES.each_with_index do |name, idx|
+        path = File.join(locale_src, name)
+        UI.user_error!("Screenshot changed during staging") unless File.file?(path) && !File.symlink?(path)
+        dst_name = format("%02d_%s", idx + 1, name)
+        FileUtils.cp(path, File.join(locale_dst, dst_name))
+      end
     end
 
-    ordered_paths = screenshot_upload_order.filter_map { |asset| by_asset[asset] }
-    remaining_paths = by_asset.values - ordered_paths
-
-    (ordered_paths + remaining_paths.sort).each_with_index do |path, idx|
-      dst_name = format("%02d_%s", idx + 1, File.basename(path))
-      FileUtils.cp(path, File.join(locale_dst, dst_name))
-    end
+    staging_dir
+  rescue StandardError
+    FileUtils.rm_rf(staging_dir) if Dir.exist?(staging_dir)
+    raise
   end
-
-  staging_dir
 end
 
 def android_screenshots_dir
@@ -127,24 +349,15 @@ def stage_android_screenshots_upload
 end
 
 def replace_ios_screenshots(screenshots_path)
-  app_identifier = CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier)
-  UI.user_error!("Missing iOS app identifier in Appfile") if app_identifier.to_s.empty?
-
-  Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(**api_key)
-
-  app = Spaceship::ConnectAPI::App.find(app_identifier)
-  UI.user_error!("Could not find app with app identifier '#{app_identifier}'") unless app
-
-  version = app.get_edit_app_store_version(platform: Spaceship::ConnectAPI::Platform::IOS)
-  UI.user_error!("Could not find a version to edit for app '#{app.name}'") unless version
-
-  localizations = version.get_app_store_version_localizations
-  screenshots = Deliver::Loader.load_app_screenshots(screenshots_path, true)
-  screenshots_per_language = screenshots.group_by(&:language)
+  preflight = ios_screenshot_preflight!(screenshots_path)
+  localizations = preflight.fetch(:localizations)
+  screenshots_per_language = preflight.fetch(:screenshots_per_language)
   iterator = Deliver::AppScreenshotIterator.new(localizations)
   processed_sets = {}
 
   iterator.each_local_screenshot(screenshots_per_language) do |localization, app_screenshot_set, screenshot, index|
+    UI.user_error!("Unexpected screenshot locale during upload") unless IOS_SCREENSHOT_LOCALES.include?(localization.locale.to_s)
+    UI.user_error!("Unexpected screenshot set type during upload") unless app_screenshot_set.screenshot_display_type.to_s == IOS_SCREENSHOT_TYPE
     unless processed_sets[app_screenshot_set.id]
       UI.important("Replacing screenshots for #{localization.locale} #{app_screenshot_set.screenshot_display_type}")
       (app_screenshot_set.app_screenshots || []).each(&:delete!)
@@ -157,6 +370,161 @@ def replace_ios_screenshots(screenshots_path)
   end
 
   UI.success("Successfully uploaded screenshots to App Store Connect")
+end
+
+def ios_screenshot_preflight!(screenshots_path)
+  UI.user_error!("Screenshot authorization requires exact configured app identifier") unless IOS_SCREENSHOT_APP_ID == CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier).to_s
+  key = api_key
+  Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(**key)
+  app = Spaceship::ConnectAPI::App.find(IOS_SCREENSHOT_APP_ID)
+  UI.user_error!("Could not find exact authorized iOS app") unless app && app.bundle_id.to_s == IOS_SCREENSHOT_APP_ID
+
+  version = app.get_edit_app_store_version(platform: Spaceship::ConnectAPI::Platform::IOS)
+  UI.user_error!("Screenshot preflight requires editable iOS version 1.0") unless version && version.version_string.to_s == "1.0" && version.platform.to_s.downcase == "ios"
+  UI.user_error!("Screenshot preflight requires an editable iOS version state") unless %w[PREPARE_FOR_SUBMISSION METADATA_REJECTED].include?(version.app_store_state.to_s)
+
+  localizations_result = version.get_app_store_version_localizations
+  localizations = localizations_result.respond_to?(:to_models) ? localizations_result.to_models : localizations_result
+  UI.user_error!("ASC returned invalid screenshot localization inventory") unless localizations.is_a?(Array)
+  IOS_SCREENSHOT_LOCALES.each do |locale|
+    matches = localizations.select { |item| item.locale.to_s == locale }
+    UI.user_error!("Expected exactly one editable localization for #{locale}") unless matches.length == 1
+    sets_result = matches.first.get_app_screenshot_sets
+    sets = sets_result.respond_to?(:to_models) ? sets_result.to_models : sets_result
+    UI.user_error!("ASC returned invalid screenshot-set inventory for #{locale}") unless sets.is_a?(Array)
+    UI.user_error!("Screenshot preflight found an out-of-scope set type for #{locale}") unless sets.all? { |set| set.screenshot_display_type.to_s == IOS_SCREENSHOT_TYPE }
+    UI.user_error!("Screenshot preflight found duplicate target screenshot sets for #{locale}") unless sets.length <= 1
+  end
+
+  screenshots = Deliver::Loader.load_app_screenshots(screenshots_path, true)
+  UI.user_error!("Deliver loader returned invalid screenshot inventory") unless screenshots.is_a?(Array) && screenshots.length == IOS_SCREENSHOT_LOCALES.length * IOS_SCREENSHOT_NAMES.length
+  screenshots_per_language = screenshots.group_by(&:language)
+  UI.user_error!("Deliver loader mapped screenshot locales outside authorization") unless screenshots_per_language.keys.sort == IOS_SCREENSHOT_LOCALES.sort
+  screenshots_per_language.each do |locale, entries|
+    paths = entries.map { |entry| File.basename(entry.path) }
+    expected_paths = IOS_SCREENSHOT_NAMES.each_with_index.map { |name, index| format("%02d_%s", index + 1, name) }
+    UI.user_error!("Deliver loader did not map exactly five ordered screenshots for #{locale}") unless paths == expected_paths
+    UI.user_error!("Deliver loader mapped screenshot to unexpected display type for #{locale}") unless entries.all? { |entry| entry.display_type.to_s == IOS_SCREENSHOT_TYPE }
+  end
+
+  {
+    localizations: localizations.select { |item| IOS_SCREENSHOT_LOCALES.include?(item.locale.to_s) },
+    all_localizations: localizations,
+    version: version,
+    screenshots_per_language: screenshots_per_language
+  }
+end
+
+def ios_screenshot_set_snapshot!(localization, local_paths_by_index, sets: nil, expected_display_type: IOS_SCREENSHOT_TYPE)
+  if sets.nil?
+    result = localization.get_app_screenshot_sets(includes: "appScreenshots")
+    sets = result.respond_to?(:to_models) ? result.to_models : result
+  end
+  UI.user_error!("ASC returned invalid screenshot-set inventory for #{localization.locale}") unless sets.is_a?(Array)
+  UI.user_error!("Unexpected duplicate screenshot sets for #{localization.locale}") unless sets.length <= 1
+  return { set: nil, count: 0, records: [] } if sets.empty?
+
+  set = sets.first
+  UI.user_error!("Unexpected screenshot display type for #{localization.locale}") unless set.screenshot_display_type.to_s == expected_display_type
+  screenshots = set.app_screenshots
+  UI.user_error!("ASC omitted screenshot list for #{localization.locale}") unless screenshots.is_a?(Array)
+  UI.user_error!("Unexpected extra screenshot count for #{localization.locale}") if screenshots.length > IOS_SCREENSHOT_NAMES.length
+  ids = screenshots.map { |screenshot| screenshot.id.to_s }
+  checksums = screenshots.map { |screenshot| screenshot.source_file_checksum.to_s.downcase }
+  UI.user_error!("Duplicate remote screenshot IDs for #{localization.locale}") unless ids.none?(&:empty?) && ids.uniq.length == ids.length
+  UI.user_error!("Duplicate or unknown source checksums for #{localization.locale}") unless checksums.none?(&:empty?) && checksums.uniq.length == checksums.length
+
+  records = screenshots.each_with_index.map do |screenshot, index|
+    state = (screenshot.asset_delivery_state || {}).fetch("state", nil).to_s
+    UI.user_error!("Unknown or incomplete screenshot state for #{localization.locale} position #{index + 1}") unless state == "COMPLETE"
+    local_path = local_paths_by_index[index]
+    UI.user_error!("Missing local comparison image for #{localization.locale}") unless local_path && File.file?(local_path)
+    expected_md5 = Digest::MD5.file(local_path).hexdigest
+    checksum = screenshot.source_file_checksum.to_s.downcase
+    UI.user_error!("Screenshot checksum mismatch for #{localization.locale} position #{index + 1}") unless checksum == expected_md5
+    { id: screenshot.id.to_s, checksum: checksum, state: state, position: index }
+  end
+  { set: set, count: screenshots.length, records: records }
+end
+
+def ios_screenshot_resume!(locale, staged_dir, preflight)
+  require "digest/md5"
+  local_paths_by_locale = IOS_SCREENSHOT_LOCALES.to_h do |local_locale|
+    paths = IOS_SCREENSHOT_NAMES.each_with_index.to_h do |name, index|
+      [index, File.join(staged_dir, local_locale, format("%02d_%s", index + 1, name))]
+    end
+    [local_locale, paths]
+  end
+  locales = preflight.fetch(:all_localizations).each_with_object({}) do |localization, index|
+    index[localization.locale.to_s] = localization
+  end
+  expected = (IOS_SCREENSHOT_LOCALES + ["ja"]).sort
+  expected.each do |remote_locale|
+    UI.user_error!("Expected exactly one ASC localization for #{remote_locale}") unless locales.key?(remote_locale)
+  end
+  UI.user_error!("Duplicate ASC screenshot localization") unless locales.length == preflight.fetch(:all_localizations).length
+
+  snapshots = {}
+  locales.each do |remote_locale, localization|
+    result = localization.get_app_screenshot_sets(includes: "appScreenshots")
+    sets = result.respond_to?(:to_models) ? result.to_models : result
+    UI.user_error!("ASC returned invalid screenshot-set inventory for #{remote_locale}") unless sets.is_a?(Array)
+    if IOS_SCREENSHOT_LOCALES.include?(remote_locale)
+      snapshot = ios_screenshot_set_snapshot!(localization, local_paths_by_locale.fetch(remote_locale), sets: sets)
+      if remote_locale == "de-DE"
+        UI.user_error!("Previously completed de-DE screenshot set changed") unless snapshot[:count] == IOS_SCREENSHOT_NAMES.length
+      elsif remote_locale == "en-GB"
+        UI.user_error!("Previously uploaded en-GB screenshot prefix missing") unless snapshot[:count] >= 1
+      elsif remote_locale != locale && snapshot[:count].positive? && snapshot[:count] != IOS_SCREENSHOT_NAMES.length
+        UI.user_error!("Unexpected partial screenshot set in #{remote_locale}")
+      end
+      snapshots[remote_locale] = snapshot
+    else
+      UI.user_error!("Unexpected screenshot set outside authorized locales") unless sets.empty?
+      snapshots[remote_locale] = { set: nil, count: 0, records: [] }
+    end
+  end
+
+  target_snapshot = snapshots.fetch(locale)
+  prefix_count = target_snapshot.fetch(:count)
+  target_localization = locales.fetch(locale)
+  local_paths_by_index = local_paths_by_locale.fetch(locale)
+  target_set = target_snapshot.fetch(:set)
+  if target_set.nil?
+    UI.user_error!("Cannot create target screenshot set when remote prefix is non-empty") unless prefix_count.zero?
+    target_set = target_localization.create_app_screenshot_set(
+      attributes: { screenshotDisplayType: IOS_SCREENSHOT_TYPE }
+    )
+    UI.user_error!("ASC did not return newly created screenshot set") unless target_set && target_set.id && target_set.screenshot_display_type.to_s == IOS_SCREENSHOT_TYPE
+  end
+
+  (prefix_count...IOS_SCREENSHOT_NAMES.length).each do |position|
+    path = local_paths_by_index.fetch(position)
+    UI.message("Appending screenshot #{position + 1}/#{IOS_SCREENSHOT_NAMES.length} for #{locale}")
+    target_set.upload_screenshot(path: path, wait_for_processing: true, position: position)
+    fresh = ios_screenshot_set_snapshot!(target_localization, local_paths_by_index)
+    UI.user_error!("Screenshot append readback did not confirm expected prefix") unless fresh[:set]&.id.to_s == target_set.id.to_s && fresh[:count] == position + 1
+    target_set = fresh[:set]
+  end
+
+  final = ios_screenshot_set_snapshot!(target_localization, local_paths_by_index)
+  UI.user_error!("Screenshot resume did not finish at exactly five matching images") unless final[:count] == IOS_SCREENSHOT_NAMES.length
+
+  locales.each do |other_locale, localization|
+    next if other_locale == locale
+
+    current = localization.get_app_screenshot_sets(includes: "appScreenshots")
+    current_sets = current.respond_to?(:to_models) ? current.to_models : current
+    baseline = snapshots.fetch(other_locale)
+    UI.user_error!("Another locale changed during screenshot resume: #{other_locale}") unless current_sets.is_a?(Array) && current_sets.length == (baseline[:set] ? 1 : 0)
+    next if current_sets.empty?
+
+    set = current_sets.first
+    images = set.app_screenshots
+    old_records = baseline.fetch(:records)
+    UI.user_error!("Another locale screenshot set changed during resume: #{other_locale}") unless set.id.to_s == baseline[:set].id.to_s && images.is_a?(Array) && images.map { |image| image.id.to_s } == old_records.map { |record| record[:id] } && images.map { |image| image.source_file_checksum.to_s.downcase } == old_records.map { |record| record[:checksum] } && images.each_with_index.all? { |image, i| (image.asset_delivery_state || {}).fetch("state", nil).to_s == "COMPLETE" && i == old_records[i][:position] }
+  end
+  UI.success("Resumed #{locale} screenshots to five matching COMPLETE images; other locales unchanged")
 end
 
 platform :ios do
@@ -520,10 +888,104 @@ platform :ios do
   ################################################################
   desc "Push screenshots to App Store Connect (no metadata, no binary)"
   lane :screenshot_push do
-    kinship_release_gate!
+    UI.user_error!("iOS screenshot_push is closed after authorized screenshot replacement. Obtain fresh explicit authorization before any screenshot write.")
+  end
+
+  desc "GET-only preflight for explicitly authorized iOS screenshot scope"
+  lane :screenshot_preflight do
+    kinship_screenshot_gate!
     check_ios_creds
     screenshots_path = stage_ios_screenshots_upload
-    replace_ios_screenshots(screenshots_path)
+    begin
+      ios_screenshot_preflight!(screenshots_path)
+      UI.success("Read-only screenshot preflight passed for #{IOS_SCREENSHOT_APP_ID}, iOS 1.0, #{IOS_SCREENSHOT_LOCALES.join(', ')}")
+    ensure
+      FileUtils.rm_rf(screenshots_path) if screenshots_path && Dir.exist?(screenshots_path)
+    end
+  end
+
+  desc "GET-only inventory of iOS 1.0 screenshot sets and screenshot processing state"
+  lane :screenshot_readback do
+    kinship_screenshot_gate!
+    check_ios_creds
+    UI.user_error!("Screenshot authorization requires exact configured app identifier") unless IOS_SCREENSHOT_APP_ID == CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier).to_s
+    Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(**api_key)
+
+    app = Spaceship::ConnectAPI::App.find(IOS_SCREENSHOT_APP_ID)
+    UI.user_error!("Could not find exact authorized iOS app") unless app && app.bundle_id.to_s == IOS_SCREENSHOT_APP_ID
+    version = app.get_edit_app_store_version(platform: Spaceship::ConnectAPI::Platform::IOS)
+    UI.user_error!("Screenshot readback requires editable iOS version 1.0") unless version && version.version_string.to_s == "1.0" && version.platform.to_s.downcase == "ios"
+    UI.user_error!("Screenshot readback requires an editable iOS version state") unless %w[PREPARE_FOR_SUBMISSION METADATA_REJECTED].include?(version.app_store_state.to_s)
+
+    localizations_result = version.get_app_store_version_localizations
+    localizations = localizations_result.respond_to?(:to_models) ? localizations_result.to_models : localizations_result
+    UI.user_error!("ASC returned invalid screenshot localization inventory") unless localizations.is_a?(Array)
+    locales = localizations.map { |localization| localization.locale.to_s }
+    UI.user_error!("ASC returned duplicate or empty screenshot locale identifiers") unless locales.none?(&:empty?) && locales.uniq.length == locales.length
+
+    require "digest/md5"
+    local_root = ios_screenshots_dir
+    localizations.sort_by { |localization| localization.locale.to_s }.each do |localization|
+      locale = localization.locale.to_s
+      sets_result = localization.get_app_screenshot_sets(includes: "appScreenshots")
+      sets = sets_result.respond_to?(:to_models) ? sets_result.to_models : sets_result
+      UI.user_error!("ASC returned invalid screenshot-set inventory for #{locale}") unless sets.is_a?(Array)
+      UI.message("Screenshot inventory locale=#{locale} sets=#{sets.length}")
+      sets.each do |set|
+        screenshots = set.app_screenshots
+        UI.user_error!("ASC omitted included screenshots for set #{set.id}") if screenshots.nil?
+        UI.message("Screenshot set locale=#{locale} id=#{set.id} type=#{set.screenshot_display_type} count=#{screenshots.length}")
+        screenshots.each_with_index do |screenshot, index|
+          checksum = screenshot.source_file_checksum.to_s
+          local_path = File.join(local_root, locale, format("%02d.png", index + 1))
+          local_checksum = if IOS_SCREENSHOT_LOCALES.include?(locale) && File.file?(local_path)
+            Digest::MD5.file(local_path).hexdigest
+          end
+          comparison = if checksum.empty? || local_checksum.nil?
+            "unavailable"
+          else
+            checksum.casecmp?(local_checksum) ? "match" : "different"
+          end
+          state = (screenshot.asset_delivery_state || {}).fetch("state", "unavailable")
+          UI.message("Screenshot locale=#{locale} set=#{set.id} id=#{screenshot.id} state=#{state} position=#{index + 1} sourceFileChecksum=#{checksum.empty? ? 'unavailable' : checksum} localMD5=#{comparison}")
+        end
+      end
+    end
+    UI.success("GET-only screenshot inventory completed; no screenshot sets created or changed")
+  end
+
+  desc "Safely append missing verified iOS screenshots for one locale"
+  lane :screenshot_resume do |options|
+    UI.user_error!("iOS screenshot_resume is closed after authorized screenshot replacement. Obtain fresh explicit authorization before any screenshot write.")
+  end
+
+  desc "GET-only inventory for explicitly authorized iPad screenshots"
+  lane :ipad_screenshot_readback do
+    kinship_screenshot_gate!
+    check_ios_creds
+    Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(**api_key)
+    ipad_screenshot_readback!
+  end
+
+  desc "Create or append verified iPad screenshots for one authorized locale"
+  lane :ipad_screenshot_sync do |options|
+    UI.user_error!("iPad screenshot authorization is suspended because iOS 1.0 is WAITING_FOR_REVIEW; fresh explicit authorization and an editable version are required. Do not retry.")
+    kinship_screenshot_gate!
+    check_ios_creds
+    locale = options[:locale].to_s
+    UI.user_error!("Run with locale:<authorized-locale>") if locale.empty?
+    Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(**api_key)
+    ipad_screenshot_sync!(locale)
+  end
+
+  desc "GET-only checksum/order diagnostic for one authorized iPad locale"
+  lane :ipad_screenshot_diagnose do |options|
+    kinship_screenshot_gate!
+    check_ios_creds
+    locale = options[:locale].to_s
+    UI.user_error!("Run with locale:<authorized-locale>") if locale.empty?
+    Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(**api_key)
+    ipad_screenshot_diagnose!(locale)
   end
 end
 

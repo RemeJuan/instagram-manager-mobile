@@ -106,6 +106,54 @@ Push iOS release notes only to App Store Connect (no binary, no screenshots)
 
 Push screenshots to App Store Connect (no metadata, no binary)
 
+### ios screenshot_preflight
+
+```sh
+[bundle exec] fastlane ios screenshot_preflight
+```
+
+GET-only preflight for explicitly authorized iOS screenshot scope
+
+### ios screenshot_readback
+
+```sh
+[bundle exec] fastlane ios screenshot_readback
+```
+
+GET-only inventory of iOS 1.0 screenshot sets and screenshot processing state
+
+### ios screenshot_resume
+
+```sh
+[bundle exec] fastlane ios screenshot_resume
+```
+
+Safely append missing verified iOS screenshots for one locale
+
+### ios ipad_screenshot_readback
+
+```sh
+[bundle exec] fastlane ios ipad_screenshot_readback
+```
+
+GET-only inventory for explicitly authorized iPad screenshots
+
+### ios ipad_screenshot_sync
+
+```sh
+[bundle exec] fastlane ios ipad_screenshot_sync
+```
+
+Create or append verified iPad screenshots for one authorized locale
+
+### ios ipad_screenshot_diagnose
+
+```sh
+[bundle exec] fastlane ios ipad_screenshot_diagnose
+```
+
+GET-only checksum/order diagnostic for one authorized iPad locale
+
 ----
 
 
