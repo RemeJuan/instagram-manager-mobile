@@ -1,0 +1,62 @@
+locale: it
+screenshots:
+  - asset: calculator_free
+    heading:
+      - text: "Calcola"
+        style: accent
+      - text: " il costo reale"
+        style: primary
+
+  - asset: batch_quotes
+    heading:
+      - text: "Stima"
+        style: accent
+      - text: " lotti di stampa"
+        style: primary
+
+  - asset: materials
+    heading:
+      - text: "Tieni traccia"
+        style: accent
+      - text: " dei materiali"
+        style: primary
+
+  - asset: gcode_import
+    heading:
+      - text: "Importa"
+        style: accent
+      - text: " G-Code"
+        style: primary
+
+  - asset: history_export
+    heading:
+      - text: "Salva"
+        style: accent
+      - text: " la cronologia"
+        style: primary
+
+  - asset: settings_free
+    heading:
+      - text: "Imposta"
+        style: accent
+      - text: " valori predefiniti"
+        style: primary
+
+  - asset: calculator_pro
+    heading:
+      - text: "Sblocca"
+        style: accent
+      - text: " prezzi avanzati"
+        style: primary
+
+  - asset: settings_pro
+    heading:
+      - line:
+          - text: "Niente account."
+            style: accent
+      - line:
+          - text: "Niente cloud."
+            style: primary
+      - line:
+          - text: "Funziona e basta."
+            style: accent

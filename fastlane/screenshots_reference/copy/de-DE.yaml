@@ -1,0 +1,62 @@
+locale: de-DE
+screenshots:
+  - asset: calculator_free
+    heading:
+      - text: "Berechne"
+        style: accent
+      - text: " echte Druckkosten"
+        style: primary
+
+  - asset: batch_quotes
+    heading:
+      - text: "Preise"
+        style: accent
+      - text: " Batch-Aufträge"
+        style: primary
+
+  - asset: materials
+    heading:
+      - text: "Verfolge"
+        style: accent
+      - text: " Materialien"
+        style: primary
+
+  - asset: gcode_import
+    heading:
+      - text: "Importiere"
+        style: accent
+      - text: " G-Code"
+        style: primary
+
+  - asset: history_export
+    heading:
+      - text: "Speichere"
+        style: accent
+      - text: " Kostenverlauf"
+        style: primary
+
+  - asset: settings_free
+    heading:
+      - text: "Setze"
+        style: accent
+      - text: " deine Standardwerte"
+        style: primary
+
+  - asset: calculator_pro
+    heading:
+      - text: "Nutze"
+        style: accent
+      - text: " erweiterte Preise"
+        style: primary
+
+  - asset: settings_pro
+    heading:
+      - line:
+          - text: "Keine Konten."
+            style: accent
+      - line:
+          - text: "Keine Cloud."
+            style: primary
+      - line:
+          - text: "Funktioniert einfach."
+            style: accent

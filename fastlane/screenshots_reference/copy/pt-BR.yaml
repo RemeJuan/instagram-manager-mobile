@@ -1,0 +1,62 @@
+locale: pt-BR
+screenshots:
+  - asset: calculator_free
+    heading:
+      - text: "Calcule"
+        style: accent
+      - text: " o custo real"
+        style: primary
+
+  - asset: batch_quotes
+    heading:
+      - text: "Calcule"
+        style: accent
+      - text: " lotes"
+        style: primary
+
+  - asset: materials
+    heading:
+      - text: "Acompanhe"
+        style: accent
+      - text: " materiais"
+        style: primary
+
+  - asset: gcode_import
+    heading:
+      - text: "Importe"
+        style: accent
+      - text: " G-Code"
+        style: primary
+
+  - asset: history_export
+    heading:
+      - text: "Salve"
+        style: accent
+      - text: " o histórico"
+        style: primary
+
+  - asset: settings_free
+    heading:
+      - text: "Defina"
+        style: accent
+      - text: " padrões"
+        style: primary
+
+  - asset: calculator_pro
+    heading:
+      - text: "Desbloqueie"
+        style: accent
+      - text: " preços avançados"
+        style: primary
+
+  - asset: settings_pro
+    heading:
+      - line:
+          - text: "Sem contas."
+            style: accent
+      - line:
+          - text: "Sem nuvem."
+            style: primary
+      - line:
+          - text: "Simples assim."
+            style: accent
