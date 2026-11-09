@@ -47,23 +47,19 @@ Customer Center APIs; core gateway does not render UI.
 
 ## Keys and build configuration
 
-Use only RevenueCat **public SDK keys** in client builds. Never use or commit
-RevenueCat secret API keys. Do not put real project keys in source, docs,
-screenshots, build logs, or committed configuration.
+Use only RevenueCat **public SDK keys** in client builds. Never use RevenueCat
+secret API keys. The iOS release public SDK key is embedded in application code;
+public client keys are not secrets.
 
 - Debug/development builds: provide the test public SDK key using
   `--dart-define=REVENUECAT_TEST_API_KEY=test_...`.
-- Release builds: provide the Apple public SDK key using
-  `--dart-define=REVENUECAT_APPLE_API_KEY=appl_...`.
+- Release builds: use embedded Apple public SDK key; no release dart-define is
+  required.
 - Release code selects only the Apple key and rejects a key beginning `test_`.
   Debug prefers the test key and falls back to the Apple key if no test key is
   supplied. Missing key, unsupported platform, or configure error means
   purchases are unavailable; no local paid state is created.
-- Never pass a real test key in a checked-in shell script or command history.
-  Retrieve it securely in the local/CI environment and supply it at build time.
-  Existing release scripts are not configured for these dart-defines and
-  remain blocked until securely integrated and validated. A copied Fastlane
-  release guard does not prove the dart-defines or release build are configured.
+- Changing the embedded key requires building and shipping a new binary.
 - Current gateway is iOS-only. Android requires its own public SDK key and an
   explicit platform implementation/validation before enabling.
 
@@ -74,8 +70,7 @@ private environment (do not commit the value):
 fvm flutter run --dart-define=REVENUECAT_TEST_API_KEY="$REVENUECAT_TEST_API_KEY"
 ```
 
-Release build configuration must provide `REVENUECAT_APPLE_API_KEY` through
-the approved secure build environment. Do not use a test key for release.
+Release builds use the embedded Apple public key. Do not use a test key for release.
 Android is not scaffolded; its key and store setup are future work, not enabled
 configuration.
 
@@ -101,10 +96,9 @@ configuration.
    eligible offer.
 6. Configure and publish a RevenueCat Paywall for the intended offering in the
    RevenueCat dashboard. Confirm paywall is assigned to current offering.
-7. Supply project's public SDK keys through approved secure build environment:
-   `test_...` for development/Test Store; `appl_...` for iOS release. Do not
-   place supplied keys in repository files, scripts, docs, or command history;
-   never use a secret API key.
+7. Use `test_...` public key for development/Test Store; release binary embeds
+   the Apple `appl_...` public key. Ensure offering and App Store product are
+   valid and available; key changes require a new binary. Never use secret API key.
 
 Lifetime purchase has no subscription renewal. Expiration/renewal copy and
 subscription-management UI are therefore not appropriate for this product.
@@ -271,10 +265,11 @@ drafts, but `https://kinship.click`, `/privacy`, and `/support` remain
 unverified/unreachable and unpublished; verify destinations before submission.
 Although store URL fields match local root files, this does not establish live
 URLs or submission readiness. Fastlane 2.241.0 partially wrote iOS metadata and
-crashed in review-attachment handling; metadata push is disabled. No binary,
-screenshots, or review submission occurred. Release scripts' secure dart-define
-configuration remains unverified. Physical-device, signed TestFlight, and real
-purchase validation remain outstanding; no release readiness or live URLs are
+crashed in review-attachment handling; that historical workflow did not upload
+a binary. User reports App Store release is now available; this has not been
+externally verified here. Live purchase remains unverified/failed. The RevenueCat
+offering and store product must be valid. Physical-device and signed TestFlight
+purchase validation remain outstanding; no external release verification is
 asserted. See [durable store release status](../../fastlane/KINSHIP_RELEASE.md).
 
 ## Official references

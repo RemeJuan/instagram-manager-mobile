@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 const _entitlementId = 'kinship_pro';
+const _embeddedAppleApiKey = 'appl_ccjTcyvSJekczlmNqeDhETMrdYl';
 
 enum EntitlementState { active, inactive, unknown }
 
@@ -80,9 +81,7 @@ class PurchaseGateway {
        _testApiKey =
            testApiKey ??
            const String.fromEnvironment('REVENUECAT_TEST_API_KEY'),
-       _appleApiKey =
-           appleApiKey ??
-           const String.fromEnvironment('REVENUECAT_APPLE_API_KEY');
+       _appleApiKey = appleApiKey ?? _embeddedAppleApiKey;
 
   final PurchaseBackend _backend;
   final String _testApiKey;

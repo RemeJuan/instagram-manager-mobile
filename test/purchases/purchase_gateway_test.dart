@@ -288,6 +288,17 @@ void main() {
         isFalse,
       );
     });
+
+    test('default Apple key configures when test key is empty', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      final fake = _FakePurchaseBackend();
+      final gateway = PurchaseGateway(backend: fake, testApiKey: '');
+      addTearDown(gateway.dispose);
+
+      expect(await gateway.initialize(), isTrue);
+      expect(fake.configuredKey, startsWith('appl_'));
+    });
   });
 }
 
