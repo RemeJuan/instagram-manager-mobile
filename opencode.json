@@ -6,6 +6,14 @@
       "enabled": true,
       "url": "https://mcp.sentry.dev/mcp?agent=1"
     },
+    "revenuecat": {
+      "type": "remote",
+      "enabled": true,
+      "url": "https://mcp.revenuecat.ai/mcp",
+      "headers": {
+        "Authorization": "Bearer {file:.env.revenuecat-key}"
+      }
+    },
     "dart-mcp-server": {
       "type": "local",
       "enabled": true,

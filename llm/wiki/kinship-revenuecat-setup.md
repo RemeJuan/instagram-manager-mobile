@@ -65,6 +65,19 @@ public client keys are not secrets.
 - Current gateway is iOS-only. Android requires its own public SDK key and an
   explicit platform implementation/validation before enabling.
 
+### OpenCode RevenueCat MCP
+
+The OpenCode RevenueCat MCP uses a RevenueCat **API v2 secret key** for AI/MCP
+access; it is separate from the public SDK key embedded in the app. The project
+config reads the key from the local, git-ignored `.env.revenuecat-key` file
+relative to `opencode.json`. Keep that file private (`chmod 600
+.env.revenuecat-key`); restart OpenCode after updating it. Use a dedicated
+read-only API key with only the access needed. Never put this secret in app
+code, a `dart-define`, or version control.
+
+See [RevenueCat API v2](https://www.revenuecat.com/docs/api-v2) and
+[RevenueCat MCP setup](https://www.revenuecat.com/docs/tools/mcp).
+
 Example local debug invocation, with placeholder replaced in the developer's
 private environment (do not commit the value):
 
