@@ -843,44 +843,88 @@ platform :ios do
   # Useful for patch releases where description/keywords/subtitle stay
   # unchanged and only What's New text needs updating.
   ################################################################
-  desc "Push iOS release notes only to App Store Connect (no binary, no screenshots)"
-  lane :release_notes_push do
-    kinship_release_gate!
-    check_ios_creds
-    ios_push_locales = %w[en-GB de-DE es-ES fr-FR it ja pt-BR]
-    key = api_key
-    metadata_dir = File.expand_path("metadata/ios", __dir__)
-    push_dir = Dir.mktmpdir("kinship-ios-release-notes-")
+  IOS_RELEASE_NOTES_APP_ID = "com.kinship.instagram.manager".freeze
+  IOS_RELEASE_NOTES_VERSION = "1.0.1".freeze
+  IOS_RELEASE_NOTES_LOCALES = %w[en-GB de-DE es-ES fr-FR it ja pt-BR].freeze
 
-    begin
-      notes_found = false
-      ios_push_locales.each do |locale|
-        src = File.join(metadata_dir, locale, "release_notes.txt")
-        next unless File.file?(src)
+  def release_notes_snapshot!
+    expected_locales = %w[en-GB de-DE es-ES fr-FR it ja pt-BR]
+    UI.user_error!("Release notes authorization scope changed") unless IOS_RELEASE_NOTES_APP_ID == "com.kinship.instagram.manager" && IOS_RELEASE_NOTES_VERSION == "1.0.1" && IOS_RELEASE_NOTES_LOCALES == expected_locales
+    UI.user_error!("Release notes authorization requires exact configured app identifier") unless IOS_RELEASE_NOTES_APP_ID == CredentialsManager::AppfileConfig.try_fetch_value(:app_identifier).to_s
+    app = Spaceship::ConnectAPI::App.find(IOS_RELEASE_NOTES_APP_ID)
+    UI.user_error!("Could not find exact authorized iOS app") unless app && app.bundle_id.to_s == IOS_RELEASE_NOTES_APP_ID
+    version = app.get_edit_app_store_version(platform: Spaceship::ConnectAPI::Platform::IOS)
+    UI.user_error!("Release notes require editable iOS version 1.0.1") unless version && version.version_string.to_s == IOS_RELEASE_NOTES_VERSION && version.platform.to_s.downcase == "ios"
+    UI.user_error!("Release notes require an editable version state") unless %w[PREPARE_FOR_SUBMISSION METADATA_REJECTED].include?(version.app_store_state.to_s)
 
-        locale_dir = File.join(push_dir, locale)
-        FileUtils.mkdir_p(locale_dir)
-        FileUtils.cp(src, File.join(locale_dir, "release_notes.txt"))
-        notes_found = true
-      end
-      UI.user_error!("No iOS release_notes.txt files found") unless notes_found
-      deliver(
-        api_key: key,
-        skip_metadata: false,
-        skip_binary_upload: true,
-        skip_screenshots: true,
-        submit_for_review: false,
-        automatic_release: false,
-        phased_release: false,
-        reject_if_possible: false,
-        overwrite_screenshots: false,
-        app_identifier: "com.kinship.instagram",
-        metadata_path: push_dir,
-        run_precheck_before_submit: false
-      )
-    ensure
-      FileUtils.rm_rf(push_dir) if Dir.exist?(push_dir)
+    result = version.get_app_store_version_localizations
+    localizations = result.respond_to?(:to_models) ? result.to_models : result
+    UI.user_error!("ASC returned invalid release-notes localization inventory") unless localizations.is_a?(Array)
+    actual_locales = localizations.map { |item| item.locale.to_s }
+    UI.user_error!("ASC must contain exactly the seven configured locales") unless actual_locales.none?(&:empty?) && actual_locales.uniq.length == actual_locales.length && actual_locales.sort == IOS_RELEASE_NOTES_LOCALES.sort
+    models = IOS_RELEASE_NOTES_LOCALES.to_h do |locale|
+      matches = localizations.select { |item| item.locale.to_s == locale }
+      UI.user_error!("Expected exactly one editable localization for #{locale}") unless matches.length == 1
+      [locale, matches.first]
     end
+    { app: app, version: version, localizations: models }
+  end
+
+  def local_release_notes!
+    metadata_dir = File.expand_path("metadata/ios", __dir__)
+    IOS_RELEASE_NOTES_LOCALES.to_h do |locale|
+      path = File.join(metadata_dir, locale, "release_notes.txt")
+      UI.user_error!("Missing or empty local release_notes.txt for #{locale}") unless File.file?(path) && !File.symlink?(path)
+      value = File.read(path).strip
+      UI.user_error!("Missing or empty local release_notes.txt for #{locale}") if value.empty?
+      [locale, value]
+    end
+  end
+
+  def compare_release_notes!(snapshot, expected)
+    IOS_RELEASE_NOTES_LOCALES.each do |locale|
+      model = snapshot.fetch(:localizations).fetch(locale)
+      UI.user_error!("ASC localization lacks whats_new field for #{locale}") unless model.respond_to?(:whats_new)
+      status = model.whats_new.to_s == expected.fetch(locale) ? "match" : "diff"
+      UI.message("#{locale} whats_new: #{status}")
+    end
+  end
+
+  desc "Push only iOS What's New text via App Store Connect API"
+  lane :release_notes_push do
+    kinship_release_gate! # Authorization consumed after verified iOS 1.0.1 update.
+    check_ios_creds
+    Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(**api_key)
+    expected = local_release_notes!
+    snapshot = release_notes_snapshot!
+    IOS_RELEASE_NOTES_LOCALES.each do |locale|
+      model = snapshot.fetch(:localizations).fetch(locale)
+      next if model.whats_new.to_s == expected.fetch(locale)
+
+      begin
+        model.update(attributes: { whats_new: expected.fetch(locale) })
+      rescue StandardError
+        UI.user_error!("ASC release-notes write failed for #{locale}; no further writes attempted")
+      end
+      begin
+        fresh = Spaceship::ConnectAPI::AppStoreVersionLocalization.get(app_store_version_localization_id: model.id).first
+        UI.user_error!("ASC release-notes verification failed for #{locale}; no further writes attempted") unless fresh && fresh.respond_to?(:whats_new) && fresh.whats_new.to_s == expected.fetch(locale)
+      rescue StandardError
+        UI.user_error!("ASC release-notes verification failed for #{locale}; no further writes attempted")
+      end
+      UI.message("#{locale} whats_new: verified")
+    end
+    UI.success("Release notes updated and verified; no binary or screenshots uploaded")
+  end
+
+  desc "GET-only preflight for iOS What's New state and local note comparison"
+  lane :release_notes_preflight do
+    check_ios_creds
+    Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(**api_key)
+    expected = local_release_notes!
+    snapshot = release_notes_snapshot!
+    compare_release_notes!(snapshot, expected)
+    UI.success("GET-only release-notes preflight completed for iOS #{IOS_RELEASE_NOTES_VERSION}")
   end
 
   ################################################################

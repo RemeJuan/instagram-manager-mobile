@@ -96,7 +96,15 @@ Set only public App Store Connect URL metadata from root files
 [bundle exec] fastlane ios release_notes_push
 ```
 
-Push iOS release notes only to App Store Connect (no binary, no screenshots)
+Push only iOS What's New text via App Store Connect API
+
+### ios release_notes_preflight
+
+```sh
+[bundle exec] fastlane ios release_notes_preflight
+```
+
+GET-only preflight for iOS What's New state and local note comparison
 
 ### ios screenshot_push
 
