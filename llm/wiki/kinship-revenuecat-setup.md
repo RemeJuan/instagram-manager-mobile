@@ -8,7 +8,8 @@ RevenueCat Flutter SDK packages are installed at `purchases_flutter` and
 `lib/purchases/capability_policy.dart`. App wiring now exists in
 `lib/features/pro/pro_screen.dart`, `lib/app/app_providers.dart`, and
 `lib/features/import/import_home_screen.dart`: Pro entry shows store-localized
-lifetime offer and RevenueCat paywall, with restore. Active `kinship_pro` is
+lifetime offer and directly purchases the verified `kinship_lifetime` package
+after explicit tap, with restore. Active `kinship_pro` is
 intended to unlock full category lists; free or unknown access is capped at 10
 per category. Import counts, coverage and restore remain free. Free users have no
 All view, search, paging or evidence details; Pro unlocks full lists and list
@@ -42,8 +43,9 @@ fvm flutter pub add purchases_flutter purchases_ui_flutter
 ```
 
 The implementation in this repository currently uses version 10.15.2 of both
-packages. `purchases_ui_flutter` is present for RevenueCat's paywall and
-Customer Center APIs; core gateway does not render UI.
+packages. `purchases_ui_flutter` remains available for optional RevenueCat UI
+and Customer Center APIs; the current purchase flow uses the core gateway and
+does not require a hosted paywall.
 
 ## Keys and build configuration
 
@@ -94,8 +96,9 @@ configuration.
    `offerings.current?.lifetime`; it does not choose arbitrary products or
    offerings. Ensure this exact package exists or purchase presentation has no
    eligible offer.
-6. Configure and publish a RevenueCat Paywall for the intended offering in the
-   RevenueCat dashboard. Confirm paywall is assigned to current offering.
+6. A dashboard-configured RevenueCat Paywall is optional. The app's current
+   direct-purchase flow does not present it. Keep the current offering's
+   Lifetime package configured; this package is required for purchase.
 7. Use `test_...` public key for development/Test Store; release binary embeds
    the Apple `appl_...` public key. Ensure offering and App Store product are
    valid and available; key changes require a new binary. Never use secret API key.
@@ -180,23 +183,15 @@ restore failures return sanitized `Restore failed.`. These are different states
 from verified inactive access. A successful SDK-cached `CustomerInfo` may be
 used as SDK-provided state; app must not invent cached paid status.
 
-## Paywall presentation and restore
+## Direct purchase and restore
 
-The SDK UI package can present the dashboard-configured offering without a
-custom paywall widget. Present only after gateway initialization succeeds.
-Current RevenueCat UI API:
-
-```dart
-import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
-
-final available = await purchases.initialize();
-if (available) {
-  final result = await RevenueCatUI.presentPaywallIfNeeded('kinship_pro');
-  // Do not grant access based only on the paywall result. Re-read gateway state.
-  final snapshot = await purchases.customerInfo();
-  // Update app access only if snapshot.state == EntitlementState.active.
-}
-```
+The current Pro screen displays the store-localized price for the verified
+`kinship_lifetime` Lifetime package and calls `PurchaseGateway.purchase` only
+after an explicit user tap. A dashboard-hosted RevenueCat Paywall is optional
+and is not part of this flow. After purchase, re-read entitlement through the
+gateway; never grant Pro based only on purchase completion. Direct purchase
+requires successful gateway initialization and an eligible current Lifetime
+package.
 
 For explicit restore action, call the gateway and use the returned entitlement
 state; do not infer success from completion alone:
