@@ -7,13 +7,18 @@ import 'package:kinship_mobile/features/pro/pro_screen.dart';
 import 'package:kinship_mobile/l10n/app_localizations.dart';
 import 'package:kinship_mobile/purchases/purchase_gateway.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
-import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
 
 class FakeGateway extends PurchaseGateway {
   FakeGateway() : super(testApiKey: '', appleApiKey: '');
 
   PurchaseSnapshot snapshot = const PurchaseSnapshot(EntitlementState.inactive);
   LifetimeOffer? offer;
+  PurchaseOutcome purchaseResult = const PurchaseOutcome(
+    snapshot: PurchaseSnapshot(EntitlementState.inactive),
+  );
+  int purchaseCalls = 0;
+  Completer<PurchaseOutcome>? pendingPurchase;
+  Object? purchaseError;
   PurchaseOutcome restoreResult = const PurchaseOutcome(
     snapshot: PurchaseSnapshot(EntitlementState.inactive),
   );
@@ -30,11 +35,20 @@ class FakeGateway extends PurchaseGateway {
   Future<PurchaseSnapshot> customerInfo() async {
     infoCalls++;
     if (pendingInfo case final pending?) return pending.future;
+    if (purchaseError case final error?) throw error;
     return snapshot;
   }
 
   @override
   Future<LifetimeOffer?> lifetimeOffer() async => offer;
+  @override
+  Future<PurchaseOutcome> purchase(LifetimeOffer offer) async {
+    purchaseCalls++;
+    snapshot = purchaseResult.snapshot;
+    if (pendingPurchase case final pending?) return pending.future;
+    return purchaseResult;
+  }
+
   @override
   Future<PurchaseOutcome> restore() async {
     restoreCalls++;
@@ -45,24 +59,11 @@ class FakeGateway extends PurchaseGateway {
   Future<void> dispose() => changes.close();
 }
 
-class FakePresenter implements ProPaywallPresenter {
-  int calls = 0;
-  PaywallResult result = PaywallResult.cancelled;
-
-  @override
-  Future<PaywallResult> present() async {
-    calls++;
-    return result;
-  }
-}
-
 void main() {
   late FakeGateway gateway;
-  late FakePresenter presenter;
 
   setUp(() {
     gateway = FakeGateway();
-    presenter = FakePresenter();
   });
   tearDown(() => gateway.dispose());
 
@@ -72,7 +73,7 @@ void main() {
         theme: KinshipTheme.light,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: ProScreen(gateway: gateway, presenter: presenter),
+        home: ProScreen(gateway: gateway),
       ),
     );
     await tester.pumpAndSettle();
@@ -106,7 +107,7 @@ void main() {
     ),
   );
 
-  testWidgets('offer absent disables paywall but restore remains available', (
+  testWidgets('offer absent disables purchase but restore remains available', (
     tester,
   ) async {
     await pump(tester);
@@ -114,39 +115,112 @@ void main() {
     expect(find.byKey(const Key('pro-offer-unavailable')), findsOneWidget);
     await tapAction(tester, 'pro-restore');
     expect(gateway.restoreCalls, 1);
-    expect(presenter.calls, 0);
+    expect(gateway.purchaseCalls, 0);
   });
 
   testWidgets(
-    'user action presents paywall; cancellation refreshes without activating',
+    'purchase requires deliberate action; cancellation refreshes silently',
     (tester) async {
       gateway.offer = sampleOffer();
+      gateway.purchaseResult = const PurchaseOutcome(
+        cancelled: true,
+        snapshot: PurchaseSnapshot(EntitlementState.inactive),
+      );
       await pump(tester);
       expect(find.textContaining('€12,49'), findsOneWidget);
-      expect(presenter.calls, 0);
+      expect(find.textContaining('lifetime'), findsOneWidget);
+      expect(gateway.purchaseCalls, 0);
       final before = gateway.infoCalls;
       await tapAction(tester, 'pro-purchase');
-      expect(presenter.calls, 1);
-      expect(gateway.infoCalls, before + 1);
-      expect(
-        find.text('Kinship Pro is not active on this account.'),
-        findsOneWidget,
-      );
+      expect(gateway.purchaseCalls, 1);
+      expect(gateway.infoCalls, before);
+      expect(find.byKey(const Key('pro-notice')), findsNothing);
     },
   );
 
-  testWidgets('paywall result only activates after refreshed entitlement', (
+  testWidgets('successful purchase activates refreshed entitlement', (
     tester,
   ) async {
     gateway.offer = sampleOffer();
-    presenter.result = PaywallResult.purchased;
+    gateway.purchaseResult = const PurchaseOutcome(
+      snapshot: PurchaseSnapshot(EntitlementState.active),
+    );
     await pump(tester);
     await tapAction(tester, 'pro-purchase');
-    expect(find.textContaining('not confirmed yet'), findsOneWidget);
-    gateway.snapshot = const PurchaseSnapshot(EntitlementState.active);
-    gateway.changes.add(gateway.snapshot);
-    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('pro-status')), findsOneWidget);
+    expect(
+      find.text('Kinship Pro is active on this account.'),
+      findsNWidgets(2),
+    );
     expect(find.byKey(const Key('pro-purchase')), findsNothing);
+  });
+
+  testWidgets('purchase error shows failure without claiming active', (
+    tester,
+  ) async {
+    gateway.offer = sampleOffer();
+    gateway.purchaseResult = const PurchaseOutcome(
+      snapshot: PurchaseSnapshot(EntitlementState.unknown),
+      error: 'Purchase failed.',
+    );
+    gateway.snapshot = const PurchaseSnapshot(EntitlementState.unknown);
+    await pump(tester);
+    await tapAction(tester, 'pro-purchase');
+    expect(
+      find.textContaining('could not be checked right now'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('could not be completed'), findsOneWidget);
+    expect(find.byKey(const Key('pro-purchase')), findsOneWidget);
+  });
+
+  testWidgets('confirmed purchase retained when refresh is unknown', (
+    tester,
+  ) async {
+    gateway.offer = sampleOffer();
+    gateway.purchaseResult = const PurchaseOutcome(
+      snapshot: PurchaseSnapshot(EntitlementState.active),
+    );
+    gateway.snapshot = const PurchaseSnapshot(EntitlementState.unknown);
+    await pump(tester);
+    await tapAction(tester, 'pro-purchase');
+    expect(find.text('Kinship Pro is active on this account.'), findsWidgets);
+    expect(find.byKey(const Key('pro-purchase')), findsNothing);
+  });
+
+  testWidgets('confirmed purchase retained when refresh throws', (
+    tester,
+  ) async {
+    gateway.offer = sampleOffer();
+    gateway.purchaseResult = const PurchaseOutcome(
+      snapshot: PurchaseSnapshot(EntitlementState.active),
+    );
+    await pump(tester);
+    gateway.purchaseError = StateError('Refresh unavailable');
+    await tapAction(tester, 'pro-purchase');
+    expect(find.text('Kinship Pro is active on this account.'), findsWidgets);
+    expect(find.byKey(const Key('pro-purchase')), findsNothing);
+  });
+
+  testWidgets('pending purchase blocks repeat taps', (tester) async {
+    gateway.offer = sampleOffer();
+    gateway.pendingPurchase = Completer<PurchaseOutcome>();
+    await pump(tester);
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('pro-purchase')),
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.byKey(const Key('pro-purchase')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('pro-purchase')));
+    expect(gateway.purchaseCalls, 1);
+    gateway.pendingPurchase!.complete(
+      const PurchaseOutcome(
+        snapshot: PurchaseSnapshot(EntitlementState.inactive),
+      ),
+    );
+    await tester.pumpAndSettle();
   });
 
   testWidgets('restore works without offer and confirms active entitlement', (
@@ -194,7 +268,7 @@ void main() {
         theme: KinshipTheme.light,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: ProScreen(gateway: gateway, presenter: presenter),
+        home: ProScreen(gateway: gateway),
       ),
     );
     await tester.pump();

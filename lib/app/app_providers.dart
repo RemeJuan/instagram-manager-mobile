@@ -6,7 +6,6 @@ import 'package:kinship_mobile/data/app_database.dart';
 import 'package:kinship_mobile/data/import_review_repository.dart';
 import 'package:kinship_mobile/data/relationship_read_repository.dart';
 import 'package:kinship_mobile/features/import/import_workspace.dart';
-import 'package:kinship_mobile/features/pro/pro_screen.dart';
 import 'package:kinship_mobile/purchases/purchase_gateway.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -32,10 +31,6 @@ final purchaseGatewayProvider = Provider<PurchaseGateway>((ref) {
   });
   return gateway;
 });
-
-final proPaywallPresenterProvider = Provider<ProPaywallPresenter>(
-  (ref) => const RevenueCatPaywallPresenter(),
-);
 
 final importReviewRepositoryProvider =
     Provider.family<ImportReviewRepository, AppDatabase>(

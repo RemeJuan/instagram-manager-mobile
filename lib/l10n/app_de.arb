@@ -135,7 +135,7 @@
   "proStatusUnknown": "Der Pro-Status konnte nicht geprüft werden. Du kannst deinen Kauf wiederherstellen.",
   "proLifetimePrice": "Dauerhafter Zugang · {price}",
   "@proLifetimePrice": {"placeholders": {"price": {"type": "String"}}},
-  "proViewOffer": "Dauerhaftes Angebot ansehen",
+  "proViewOffer": "Dauerhaften Zugang kaufen",
   "proOfferUnavailable": "Das Angebot ist derzeit nicht verfügbar. Versuche es später erneut; Importe funktionieren weiterhin.",
   "proRestore": "Käufe wiederherstellen",
   "proRestored": "Kinship Pro wiederhergestellt.",

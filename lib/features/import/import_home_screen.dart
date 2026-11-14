@@ -26,7 +26,6 @@ class ImportHomeScreen extends StatefulWidget {
     required this.read,
     required this.openProfile,
     this.purchaseGateway,
-    this.paywallPresenter,
   });
 
   final ImportWorkspace workspace;
@@ -34,7 +33,6 @@ class ImportHomeScreen extends StatefulWidget {
   final RelationshipReadRepository read;
   final Future<bool> Function(Uri) openProfile;
   final PurchaseGateway? purchaseGateway;
-  final ProPaywallPresenter? paywallPresenter;
 
   @override
   State<ImportHomeScreen> createState() => _ImportHomeScreenState();
@@ -369,13 +367,7 @@ class _ImportHomeScreenState extends State<ImportHomeScreen> {
     final gateway = widget.purchaseGateway;
     if (gateway == null) return;
     await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => ProScreen(
-          gateway: gateway,
-          presenter:
-              widget.paywallPresenter ?? const RevenueCatPaywallPresenter(),
-        ),
-      ),
+      MaterialPageRoute<void>(builder: (_) => ProScreen(gateway: gateway)),
     );
     if (mounted) await _refreshEntitlement();
   }

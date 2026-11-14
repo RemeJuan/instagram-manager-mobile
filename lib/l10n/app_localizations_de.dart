@@ -415,7 +415,7 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get proViewOffer => 'Dauerhaftes Angebot ansehen';
+  String get proViewOffer => 'Dauerhaften Zugang kaufen';
 
   @override
   String get proOfferUnavailable =>

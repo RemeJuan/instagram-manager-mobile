@@ -135,7 +135,7 @@
   "proStatusUnknown": "Proの状態を確認できませんでした。購入の復元をお試しください。",
   "proLifetimePrice": "買い切り · {price}",
   "@proLifetimePrice": {"placeholders": {"price": {"type": "String"}}},
-  "proViewOffer": "買い切りプランを見る",
+  "proViewOffer": "買い切りで購入する",
   "proOfferUnavailable": "現在プランを表示できません。後で再度お試しください。読み込みは引き続き利用できます。",
   "proRestore": "購入を復元",
   "proRestored": "Kinship Proを復元しました。",

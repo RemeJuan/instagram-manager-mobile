@@ -60,6 +60,5 @@ class KinshipApp extends ConsumerWidget {
     read: ref.watch(relationshipReadRepositoryProvider(database)),
     openProfile: (uri) => launchUrl(uri, mode: LaunchMode.externalApplication),
     purchaseGateway: ref.watch(purchaseGatewayProvider),
-    paywallPresenter: ref.watch(proPaywallPresenterProvider),
   );
 }

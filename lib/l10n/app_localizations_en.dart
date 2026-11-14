@@ -410,7 +410,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get proViewOffer => 'View lifetime offer';
+  String get proViewOffer => 'Buy lifetime access';
 
   @override
   String get proOfferUnavailable =>
@@ -867,7 +867,7 @@ class AppLocalizationsEnGb extends AppLocalizationsEn {
   }
 
   @override
-  String get proViewOffer => 'View lifetime offer';
+  String get proViewOffer => 'Buy lifetime access';
 
   @override
   String get proOfferUnavailable =>

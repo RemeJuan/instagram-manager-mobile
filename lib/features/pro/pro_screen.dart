@@ -4,26 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:kinship_mobile/app/kinship_theme.dart';
 import 'package:kinship_mobile/l10n/app_localizations.dart';
 import 'package:kinship_mobile/purchases/purchase_gateway.dart';
-import 'package:purchases_ui_flutter/purchases_ui_flutter.dart';
-
-/// Keep native UI outside widget tests. Only a deliberate tap presents it.
-abstract interface class ProPaywallPresenter {
-  Future<PaywallResult> present();
-}
-
-class RevenueCatPaywallPresenter implements ProPaywallPresenter {
-  const RevenueCatPaywallPresenter();
-
-  @override
-  Future<PaywallResult> present() =>
-      RevenueCatUI.presentPaywallIfNeeded('kinship_pro');
-}
 
 class ProScreen extends StatefulWidget {
-  const ProScreen({super.key, required this.gateway, required this.presenter});
+  const ProScreen({super.key, required this.gateway});
 
   final PurchaseGateway gateway;
-  final ProPaywallPresenter presenter;
 
   @override
   State<ProScreen> createState() => _ProScreenState();
@@ -71,33 +56,50 @@ class _ProScreenState extends State<ProScreen> {
     }
   }
 
-  Future<void> _showPaywall() async {
-    if (_busy || _offer == null || _snapshot.isPro) return;
+  Future<void> _purchase() async {
+    final offer = _offer;
+    if (_busy || offer == null || _snapshot.isPro) return;
     setState(() {
       _busy = true;
       _notice = null;
     });
+    final version = _entitlementVersion;
+    PurchaseOutcome? outcome;
+    PurchaseSnapshot? refreshed;
+    Object? failure;
     try {
-      final result = await widget.presenter.present();
-      final version = _entitlementVersion;
-      final snapshot = await widget.gateway.customerInfo();
-      if (!mounted) return;
-      setState(() {
-        if (version == _entitlementVersion) _snapshot = snapshot;
-        _notice = _snapshot.isPro
-            ? l.proActive
-            : result == PaywallResult.error
-            ? l.proPurchaseFailed
-            : result == PaywallResult.cancelled ||
-                  result == PaywallResult.notPresented
-            ? null
-            : l.proNotConfirmed;
-      });
-    } on Object {
-      if (mounted) setState(() => _notice = l.proPurchaseFailed);
-    } finally {
-      if (mounted) setState(() => _busy = false);
+      outcome = await widget.gateway.purchase(offer);
+      if (!outcome.cancelled) refreshed = await widget.gateway.customerInfo();
+    } on Object catch (error) {
+      failure = error;
     }
+    if (!mounted) return;
+    setState(() {
+      if (version == _entitlementVersion) {
+        if (outcome?.cancelled != true) {
+          final refreshedSnapshot = refreshed;
+          final purchasedSnapshot = outcome?.snapshot;
+          _snapshot =
+              refreshedSnapshot == null ||
+                  refreshedSnapshot.state == EntitlementState.unknown
+              ? (purchasedSnapshot?.isPro == true
+                    ? purchasedSnapshot!
+                    : refreshedSnapshot ??
+                          const PurchaseSnapshot(EntitlementState.unknown))
+              : refreshedSnapshot;
+        }
+      }
+      _notice = outcome?.cancelled == true
+          ? null
+          : _snapshot.isPro
+          ? l.proActive
+          : outcome?.error != null || failure != null
+          ? l.proPurchaseFailed
+          : _snapshot.state == EntitlementState.unknown
+          ? l.proStatusUnknown
+          : l.proNotConfirmed;
+    });
+    if (mounted) setState(() => _busy = false);
   }
 
   Future<void> _restore() async {
@@ -190,7 +192,7 @@ class _ProScreenState extends State<ProScreen> {
                       const SizedBox(height: 12),
                       FilledButton(
                         key: const Key('pro-purchase'),
-                        onPressed: _busy ? null : _showPaywall,
+                        onPressed: _busy ? null : _purchase,
                         child: Text(l.proViewOffer),
                       ),
                     ] else

@@ -135,7 +135,7 @@
   "proStatusUnknown": "Pro status could not be checked right now. You can try restoring your purchase.",
   "proLifetimePrice": "Lifetime access · {price}",
   "@proLifetimePrice": {"placeholders": {"price": {"type": "String"}}},
-  "proViewOffer": "View lifetime offer",
+  "proViewOffer": "Buy lifetime access",
   "proOfferUnavailable": "The lifetime offer is unavailable right now. Try again later; your imports still work.",
   "proRestore": "Restore purchases",
   "proRestored": "Kinship Pro restored.",

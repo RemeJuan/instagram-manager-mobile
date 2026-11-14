@@ -761,7 +761,7 @@ abstract class AppLocalizations {
   /// No description provided for @proViewOffer.
   ///
   /// In en, this message translates to:
-  /// **'View lifetime offer'**
+  /// **'Buy lifetime access'**
   String get proViewOffer;
 
   /// No description provided for @proOfferUnavailable.

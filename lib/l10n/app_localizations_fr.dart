@@ -414,7 +414,7 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get proViewOffer => 'Voir l’offre à vie';
+  String get proViewOffer => 'Acheter l’accès à vie';
 
   @override
   String get proOfferUnavailable =>

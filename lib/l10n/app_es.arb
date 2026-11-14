@@ -135,7 +135,7 @@
   "proStatusUnknown": "No se pudo comprobar el estado de Pro. Puedes intentar restaurar tu compra.",
   "proLifetimePrice": "Acceso de por vida · {price}",
   "@proLifetimePrice": {"placeholders": {"price": {"type": "String"}}},
-  "proViewOffer": "Ver oferta de por vida",
+  "proViewOffer": "Comprar acceso de por vida",
   "proOfferUnavailable": "La oferta no está disponible ahora. Inténtalo más tarde; tus importaciones siguen funcionando.",
   "proRestore": "Restaurar compras",
   "proRestored": "Kinship Pro restaurado.",

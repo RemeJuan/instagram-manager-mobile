@@ -413,7 +413,7 @@ class AppLocalizationsEs extends AppLocalizations {
   }
 
   @override
-  String get proViewOffer => 'Ver oferta de por vida';
+  String get proViewOffer => 'Comprar acceso de por vida';
 
   @override
   String get proOfferUnavailable =>

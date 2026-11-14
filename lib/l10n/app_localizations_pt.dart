@@ -414,7 +414,7 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get proViewOffer => 'Ver oferta vitalícia';
+  String get proViewOffer => 'Comprar acesso vitalício';
 
   @override
   String get proOfferUnavailable =>
@@ -875,7 +875,7 @@ class AppLocalizationsPtBr extends AppLocalizationsPt {
   }
 
   @override
-  String get proViewOffer => 'Ver oferta vitalícia';
+  String get proViewOffer => 'Comprar acesso vitalício';
 
   @override
   String get proOfferUnavailable =>

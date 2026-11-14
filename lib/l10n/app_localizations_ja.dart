@@ -393,7 +393,7 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get proViewOffer => '買い切りプランを見る';
+  String get proViewOffer => '買い切りで購入する';
 
   @override
   String get proOfferUnavailable =>
